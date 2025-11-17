@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Download Images to ZIP",
+  "description": "Collects images from the current page and downloads them as a ZIP.",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Download"
+  },
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "downloads"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
