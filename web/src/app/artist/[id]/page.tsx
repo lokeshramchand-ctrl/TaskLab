@@ -8,6 +8,7 @@ import { Icon } from '@/components/Icon';
 import { useLibrary } from '@/player/library';
 import { usePlayer } from '@/player/store';
 import { useSettings } from '@/player/settings';
+import { useTint } from '@/lib/tint';
 
 export default function ArtistPage({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent(use(params).id);
@@ -16,41 +17,45 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
   const following = useLibrary((s) => !!s.artists[id]);
   const [bioOpen, setBioOpen] = useState(false);
   const [allSongs, setAllSongs] = useState(false);
+  const tint = useTint(data?.image ?? data?.thumb);
   if (isLoading) return <PageSkeleton />;
   if (error || !data) return <PageError error={error} retry={() => refetch()} />;
 
   const photo = data.image ?? data.thumb;
   const facts = [data.genre, data.origin, data.since && `since ${data.since}`, data.subscribers].filter(Boolean);
   return (
-    <div className="fade-in">
-      <header className="ah">
-        {data.banner && (
-          <div className="banner" aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={data.banner} alt="" referrerPolicy="no-referrer" />
-          </div>
-        )}
-        <div className="row hero card pad">
-          {photo && <div className="amb" aria-hidden style={{ backgroundImage: `url(${photo})` }} />}
-          <Avatar src={photo} size={168} alt={data.name} />
-          <div className="grow">
-            <div className="eyebrow">Artist</div>
-            <h1 className="h1 name">{data.name}</h1>
-            {facts.length > 0 && <div className="muted facts">{facts.join(' · ')}</div>}
-            <div className="row" style={{ marginTop: 20, flexWrap: 'wrap' }}>
-              <button className="btn primary" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}` })}>
-                <Icon name="play" size={14} /> Play
-              </button>
-              {data.topSongs[0] && (
-                <button className="btn" onClick={() => usePlayer.getState().playRadio(data.topSongs[0])}>
-                  <Icon name="radio" size={16} /> Radio
-                </button>
-              )}
-              <button className="btn" onClick={() => useLibrary.getState().toggleSaved({ kind: 'artist', id, title: data.name, thumb: photo })}>
-                <Icon name={following ? 'check' : 'plus'} size={16} /> {following ? 'Following' : 'Follow'}
-              </button>
-            </div>
-          </div>
+    <div className="fade-in dh-page" style={tint ? ({ ['--tint' as string]: tint } as React.CSSProperties) : undefined}>
+      <div className="dh-wash" aria-hidden />
+      <header className="dh">
+        <div className="dh-art round">
+          <Avatar src={photo} size="100%" alt={data.name} />
+        </div>
+        <h1 className="dh-title clamp2">{data.name}</h1>
+        {facts.length > 0 && <div className="dh-sub" style={{ fontSize: 14, fontWeight: 500 }}>{facts.join(' · ')}</div>}
+        <div className="dh-actions">
+          <button
+            className="dh-round"
+            aria-label="Shuffle"
+            disabled={!data.topSongs.length}
+            onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}`, shuffle: true })}
+          >
+            <Icon name="shuffle" size={20} />
+          </button>
+          <button className="dh-play" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}` })}>
+            <Icon name="play" size={16} /> Play
+          </button>
+          <button
+            className="dh-round"
+            aria-label={following ? 'Unfollow' : 'Follow'}
+            onClick={() => useLibrary.getState().toggleSaved({ kind: 'artist', id, title: data.name, thumb: photo })}
+          >
+            <Icon name={following ? 'check' : 'plus'} size={20} />
+          </button>
+          {data.topSongs[0] && (
+            <button className="dh-round" aria-label="Start radio" onClick={() => usePlayer.getState().playRadio(data.topSongs[0])}>
+              <Icon name="radio" size={20} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -89,20 +94,11 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
 
       <style jsx>{`
         .fade-in { display: flex; flex-direction: column; gap: 20px; }
-        .ah { position: relative; padding-top: 12px; }
-        .banner { position: absolute; left: 0; right: 0; top: 12px; height: 100%; min-height: 200px; overflow: hidden; border-radius: var(--r); opacity: .25; mask-image: linear-gradient(180deg, #000, transparent); pointer-events: none; }
-        .banner img { width: 100%; height: 100%; object-fit: cover; }
-        .amb { position: absolute; inset: -25%; background-size: cover; background-position: center; filter: blur(70px) saturate(1.4); opacity: .18; pointer-events: none; }
-        .hero { position: relative; overflow: hidden; gap: 28px; align-items: flex-end; flex-wrap: wrap; }
-        .hero > :global(*:not(.amb)) { position: relative; }
-        .name { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 600; margin: 4px 0 6px; }
-        .facts { font-weight: 500; font-size: 13.5px; }
         .about { max-width: 860px; }
         .about p { margin: 0; line-height: 1.6; color: var(--text); white-space: pre-line; font-size: 14px; }
         .clamp4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
         .more { font-weight: 500; font-size: 13px; color: var(--signal); }
         .src { font-size: 12px; font-weight: 500; }
-        @media (max-width: 900px) { .hero { gap: 18px; } }
       `}</style>
     </div>
   );

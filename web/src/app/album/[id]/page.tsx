@@ -26,12 +26,13 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         numbered
         actions={
           <button
-            className="btn"
+            className="dh-round"
+            aria-label={saved ? 'Remove from library' : 'Add to library'}
             onClick={() =>
               useLibrary.getState().toggleSaved({ kind: 'album', id: data.id, title: data.title, artists: data.artists, year: data.year, thumb: data.thumb })
             }
           >
-            <Icon name={saved ? 'check' : 'plus'} size={16} /> {saved ? 'Saved' : 'Save'}
+            <Icon name={saved ? 'check' : 'plus'} size={20} />
           </button>
         }
       />

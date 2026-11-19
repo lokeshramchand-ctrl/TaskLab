@@ -198,3 +198,56 @@ code { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
+/* ---- Detail pages (album, playlist, artist): artwork-tinted wash, centred hero, glass buttons ---- */
+.dh-page { position: relative; isolation: isolate; }
+.dh-wash {
+  position: absolute; z-index: -1; pointer-events: none;
+  left: calc(var(--gutter) * -1); right: calc(var(--gutter) * -1); top: -40px; height: 680px;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--tint, var(--surface-2)) 72%, var(--bg)) 0%,
+    color-mix(in srgb, var(--tint, var(--surface-2)) 34%, var(--bg)) 52%,
+    var(--bg) 100%);
+  transition: background .6s var(--ease);
+}
+:root[data-theme="dark"] .dh-wash, .dark .dh-wash {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--tint, var(--surface-2)) 62%, var(--bg)) 0%,
+    color-mix(in srgb, var(--tint, var(--surface-2)) 28%, var(--bg)) 52%,
+    var(--bg) 100%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dh-wash {
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--tint, var(--surface-2)) 62%, var(--bg)) 0%,
+      color-mix(in srgb, var(--tint, var(--surface-2)) 28%, var(--bg)) 52%,
+      var(--bg) 100%);
+  }
+}
+.dh { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 22px 0 6px; }
+.dh-art { width: min(264px, 64vw); aspect-ratio: 1; flex: none; box-shadow: 0 26px 54px -20px rgba(0, 0, 0, .5); border-radius: 16px; }
+.dh-art.round { border-radius: 50%; }
+.dh-art > * { width: 100% !important; height: 100% !important; }
+.dh-title { margin: 22px 0 0; font-size: clamp(1.35rem, 3vw, 1.85rem); font-weight: 700; letter-spacing: -.025em; line-height: 1.15; max-width: 640px; }
+.dh-sub { margin-top: 5px; font-size: 17px; font-weight: 600; color: color-mix(in srgb, var(--tint, var(--signal)) 70%, var(--ink)); }
+.dh-sub a:hover { text-decoration: underline; }
+.dh-meta { margin-top: 3px; font-size: 12.5px; color: color-mix(in srgb, var(--tint, var(--muted)) 35%, var(--muted)); }
+.dh-actions { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.dh-round, .dh-actions .btn {
+  display: inline-grid; place-items: center; height: 44px; min-width: 44px; padding: 0; border: 0; border-radius: 99px; cursor: pointer;
+  color: var(--ink); background: color-mix(in srgb, var(--ink) 12%, transparent);
+  backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  transition: transform .3s var(--spring), background .2s;
+}
+.dh-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 0 18px; font-weight: 600; }
+.dh-round:hover, .dh-actions .btn:hover { background: color-mix(in srgb, var(--ink) 18%, transparent); }
+.dh-round:active, .dh-actions .btn:active, .dh-play:active { transform: scale(.95); }
+.dh-round:disabled, .dh-play:disabled { opacity: .5; pointer-events: none; }
+.dh-play {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; min-width: 168px; padding: 0 30px; border: 0; border-radius: 99px;
+  background: rgba(255, 255, 255, .94); color: #111; font-weight: 700; font-size: 15px; cursor: pointer;
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, .35); transition: transform .3s var(--spring);
+}
+.dh-desc { max-width: 520px; margin: 18px auto 0; font-size: 13.5px; line-height: 1.45; color: color-mix(in srgb, var(--tint, var(--muted)) 30%, var(--muted)); }
+.dh-more { margin-top: 2px; font-weight: 600; font-size: 13px; color: color-mix(in srgb, var(--tint, var(--signal)) 70%, var(--ink)); }
+.dh-list { margin-top: 18px; display: flex; flex-direction: column; gap: 1px; }
