@@ -114,7 +114,7 @@ export function PlayerBar() {
         <Seek compact />
       </div>
       <style jsx>{`
-        .bar { position: fixed; z-index: 50; bottom: 0; left: var(--side-w); right: 0; height: var(--player-h); display: flex; align-items: center; gap: 12px; padding: 0 var(--gutter); background: var(--glass); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); border-top: .5px solid var(--border); animation: rise .4s var(--ease-out) both; }
+        .bar { position: fixed; z-index: 50; bottom: 14px; left: calc(var(--side-w) + 16px); right: 16px; height: 66px; border-radius: 24px; box-shadow: var(--lift-hi); display: flex; align-items: center; gap: 12px; padding: 0 20px; background: var(--glass); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); border: .5px solid var(--border); animation: rise .4s var(--ease-out) both; }
         .meta { display: flex; align-items: center; gap: 12px; min-width: 0; width: 300px; }
         .t { font-weight: 600; font-size: 14px; letter-spacing: -.02em; }
         .s { color: var(--muted); font-size: 12.5px; margin-top: 1px; }

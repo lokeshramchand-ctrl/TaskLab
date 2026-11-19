@@ -12,6 +12,17 @@ import { Icon } from '@/components/Icon';
 import { useLibrary } from '@/player/library';
 import { usePlayer } from '@/player/store';
 
+const CATS: [string, string, string][] = [
+  ['Top hits India', '#ff2d55', '#ff6b81'],
+  ['Lo-fi beats', '#5856d6', '#8e8cf0'],
+  ['Workout', '#ff9500', '#ffb84d'],
+  ['Arijit Singh', '#34c759', '#7be095'],
+  ['Anirudh', '#007aff', '#5aa9ff'],
+  ['Chill vibes', '#af52de', '#cb84ee'],
+  ['Punjabi', '#ff3b30', '#ff7a70'],
+  ['90s Bollywood', '#30b0c7', '#6fd0e0'],
+];
+
 export default function SearchPage() {
   return (
     <Suspense>
@@ -211,11 +222,11 @@ function SearchInner() {
             </section>
           )}
           <section>
-            <div className="section-head"><h2>Try searching for</h2></div>
-            <div className="pills">
-              {['Top hits India', 'Lo-fi beats', 'Workout', 'Arijit Singh', 'Anirudh', 'Chill vibes'].map((r) => (
-                <button key={r} className="pill" onClick={() => submit(r)}>
-                  <Icon name="search" size={14} /> {r}
+            <div className="section-head"><h2>Browse categories</h2></div>
+            <div className="cats">
+              {CATS.map(([label, from, to]) => (
+                <button key={label} className="cat" style={{ background: `linear-gradient(135deg, ${from}, ${to})` }} onClick={() => submit(label)}>
+                  {label}
                 </button>
               ))}
             </div>
@@ -224,8 +235,13 @@ function SearchInner() {
       )}
 
       <style jsx>{`
-        .box { position: relative; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 10px 0 18px; border-radius: 999px; margin-top: 4px; background: var(--surface); border: 1px solid var(--border-2); color: var(--muted); transition: border-color .2s, box-shadow .2s; }
-        .box:focus-within { border-color: var(--signal); box-shadow: 0 0 0 4px var(--signal-soft); color: var(--text); }
+        .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+        .cat { height: 104px; padding: 14px; border-radius: 16px; color: #fff; font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: .01em; text-align: left; vertical-align: top; transition: transform .35s var(--spring), filter .2s; }
+        .cat:hover { filter: brightness(1.06); }
+        .cat:active { transform: scale(.97); }
+        @media (max-width: 900px) { .cats { grid-template-columns: 1fr 1fr; } }
+        .box { position: relative; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 10px 0 18px; border-radius: 999px; margin-top: 4px; background: var(--surface-2); border: 0; color: var(--muted); transition: box-shadow .2s; }
+        .box:focus-within { box-shadow: 0 0 0 3px var(--signal-soft); color: var(--text); }
         .box input { flex: 1; border: 0; outline: 0; background: transparent; font-size: 16px; font-weight: 500; color: var(--text); min-width: 0; }
         .box input::placeholder { color: var(--muted); font-weight: 400; }
         .sugg { position: absolute; z-index: 30; margin-top: 8px; width: min(640px, calc(100% - 2 * var(--gutter))); padding: 8px; box-shadow: var(--lift-hi); }
@@ -234,8 +250,8 @@ function SearchInner() {
         .results { margin-top: 4px; display: flex; flex-direction: column; gap: 20px; }
         .start { margin-top: 18px; display: flex; flex-direction: column; gap: 22px; }
         .pills { display: flex; flex-wrap: wrap; gap: 8px; }
-        .pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--surface); font-size: 13.5px; font-weight: 500; transition: background .2s, transform .3s var(--spring); }
-        .pill:hover { background: var(--surface-2); }
+        .pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--surface-2); font-size: 13.5px; font-weight: 500; transition: background .2s, transform .3s var(--spring); }
+        .pill:hover { background: color-mix(in srgb, var(--surface-2) 86%, var(--text)); }
         .pill:active { transform: scale(.97); }
         .results :global(.chips) { align-self: flex-start; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 24px 20px; }

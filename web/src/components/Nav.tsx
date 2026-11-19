@@ -198,7 +198,7 @@ export function Topbar() {
         .search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; font-size: 14px; }
         .search input::placeholder { color: var(--muted); }
         kbd { font: inherit; font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--border-2); border-radius: 6px; padding: 0 6px; line-height: 18px; }
-        @media (max-width: 900px) { .mobile-brand { display: block; } .search { flex: 1; } kbd { display: none; } }
+        @media (max-width: 900px) { .top { display: none; } }
       `}</style>
     </header>
   );
@@ -209,7 +209,7 @@ export function MobileTabs() {
   const tabs = useTabs();
   return (
     <nav className="tabs" aria-label="Main">
-      {[...tabs, { href: '/settings', icon: 'settings' as IconName, label: 'Settings' }].map((t) => (
+      {tabs.map((t) => (
         <Link key={t.href} href={t.href} className={isActive(path, t.href) ? 'on' : ''} aria-label={t.label}>
           <Icon name={t.icon} size={22} />
           <span>{t.label}</span>

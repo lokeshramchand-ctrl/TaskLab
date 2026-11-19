@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { Icon, type IconName } from './Icon';
+import { useAuth } from '@/player/sync';
 
 /** Docs-style side panel (bottom sheet on phones). Focus goes to Close on open; Escape closes. */
 export function Sheet({
@@ -165,8 +167,10 @@ export function EmptyState({ icon, title, hint, action }: { icon: IconName; titl
 }
 
 export function PageHeader({ eyebrow, title, sub, actions }: { eyebrow?: string; title: React.ReactNode; sub?: string; actions?: React.ReactNode }) {
+  const user = useAuth((s) => s.user);
   return (
     <header className="page-head fade-in">
+      <Link href="/settings" className="avatar-link" aria-label="Account and settings">{(user ?? 'L')[0]?.toUpperCase()}</Link>
       <div>
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <h1 className="h1">{title}</h1>
