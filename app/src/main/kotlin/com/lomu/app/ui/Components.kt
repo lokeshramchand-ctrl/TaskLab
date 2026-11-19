@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import com.lomu.app.models.toMediaMetadata
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronLeft
@@ -199,9 +200,10 @@ private fun NowPlayingBars(tint: Color, modifier: Modifier = Modifier) = Ic(Ph.W
 @Composable
 fun MediaRow(
     title: String, line: String, thumb: String?, trailing: String? = null, index: Int? = null, active: Boolean = false,
-    separator: Boolean = true, pad: Dp = 20.dp, onClick: () -> Unit,
+    separator: Boolean = true, pad: Dp = 20.dp, menu: MenuTarget? = null, onClick: () -> Unit,
 ) {
     val lo = LocalLo.current
+    val openMenu = LocalTrackMenu.current
     val inset = pad + if (index != null) 36.dp else 66.dp
     Column(Modifier.fillMaxWidth().pressable(RoundedCornerShape(0.dp), onClick = onClick)) {
         Row(Modifier.fillMaxWidth().padding(start = pad, end = if (pad < 12.dp) 0.dp else 12.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -221,7 +223,8 @@ fun MediaRow(
                 if (line.isNotBlank()) Text(line, style = LoType.small, color = lo.grey, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (trailing != null) Text(trailing, style = LoType.small, color = lo.grey, modifier = Modifier.padding(start = 10.dp))
-            Icon(Icons.Rounded.MoreHoriz, null, tint = lo.grey, modifier = Modifier.padding(start = 6.dp).size(22.dp))
+            if (menu != null) Box(Modifier.size(40.dp).pressable(CircleShape) { openMenu(menu) }, Alignment.Center) { Icon(Icons.Rounded.MoreHoriz, "More", tint = lo.grey, modifier = Modifier.size(22.dp)) }
+            else Spacer(Modifier.width(6.dp))
         }
         if (separator) Hairline(inset)
     }
@@ -236,7 +239,7 @@ fun playingId(): String? {
 
 @Composable
 fun TrackRow(song: SongItem, index: Int? = null, onClick: () -> Unit) {
-    MediaRow(song.title, artistLine(song), song.thumbnail, song.duration?.let { formatTime(it * 1000L) }, index, playingId() == song.id, onClick = onClick)
+    MediaRow(song.title, artistLine(song), song.thumbnail, song.duration?.let { formatTime(it * 1000L) }, index, playingId() == song.id, menu = MenuTarget(song.toMediaMetadata()), onClick = onClick)
 }
 
 /** Shelf card: square art with a soft edge, one line of title, one of grey detail. */

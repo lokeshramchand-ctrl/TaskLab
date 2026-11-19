@@ -50,6 +50,8 @@ import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
+import androidx.room.withTransaction
+import com.lomu.app.models.toMediaMetadata
 import kotlinx.coroutines.launch
 
 @Composable
@@ -416,7 +418,7 @@ fun LikedScreen() {
         }
         if (songs.isEmpty()) item { EmptyState(Ph.Heart, "No Liked Songs", "Tap the heart in the player to add songs here.") }
         itemsIndexed(songs) { i, s ->
-            MediaRow(s.song.title, s.artists.joinToString { it.name }, s.song.thumbnailUrl, active = now == s.song.id) {
+            MediaRow(s.song.title, s.artists.joinToString { it.name }, s.song.thumbnailUrl, active = now == s.song.id, menu = MenuTarget(s.toMediaMetadata())) {
                 player?.playMediaItems("Liked", songs.map { it.toMediaItem() }, i)
             }
         }
@@ -578,6 +580,7 @@ fun ArtistScreen(id: String) {
 @Composable
 fun LocalPlaylistScreen(id: String) {
     val player = LocalPlayer.current
+    val scope = rememberCoroutineScope()
     val playlists = playlistsState()
     val meta = playlists.firstOrNull { it.playlist.id == id }
     val flow = remember(player, id) { player?.database?.playlistSongs(id) ?: flowOf(emptyList()) }
@@ -591,7 +594,10 @@ fun LocalPlaylistScreen(id: String) {
     ) {
         if (songs.isEmpty()) item { EmptyState(Ph.Playlist, "This playlist is empty") }
         itemsIndexed(songs) { i, s ->
-            MediaRow(s.song.song.title, s.song.artists.joinToString { it.name }, s.song.song.thumbnailUrl, active = now == s.song.song.id) {
+            MediaRow(
+                s.song.song.title, s.song.artists.joinToString { it.name }, s.song.song.thumbnailUrl, active = now == s.song.song.id,
+                menu = MenuTarget(s.song.toMediaMetadata(), "Remove from this Playlist") { player?.database?.let { d -> scope.launch(kotlinx.coroutines.Dispatchers.IO) { d.withTransaction { deletePlaylistSongMap(s.map.id) } } } },
+            ) {
                 player?.playMediaItems("Playlist", items, i)
             }
         }

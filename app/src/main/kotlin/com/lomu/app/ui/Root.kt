@@ -75,17 +75,18 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
     val meta = pc?.mediaMetadata?.collectAsState()?.value
     val remote = rememberRemote()
     var showDevices by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf<MenuTarget?>(null) }
 
     if (welcome) {
         Welcome { welcome = false; onWelcomeDone() }
         return
     }
-    BackHandler(enabled = showDevices || showPlayer || nav.canPop) {
-        if (showDevices) showDevices = false else if (showPlayer) showPlayer = false else nav.pop()
+    BackHandler(enabled = menu != null || showDevices || showPlayer || nav.canPop) {
+        if (menu != null) menu = null else if (showDevices) showDevices = false else if (showPlayer) showPlayer = false else nav.pop()
     }
     // Tab bar 58dp + gaps, plus the mini player capsule (48dp) when something is loaded.
     val inset = (if (meta != null || remote != null) 138.dp else 82.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    CompositionLocalProvider(LocalNav provides nav, LocalBottomInset provides inset, LocalOpenDevices provides { showDevices = true }) {
+    CompositionLocalProvider(LocalNav provides nav, LocalBottomInset provides inset, LocalOpenDevices provides { showDevices = true }, LocalTrackMenu provides { menu = it }) {
         Box(Modifier.fillMaxSize().background(lo.bg)) {
             AnimatedContent(
                 targetState = nav.current,
@@ -124,6 +125,7 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
                 exit = slideOutVertically(tween(260)) { it } + fadeOut(tween(200)),
             ) { if (remote != null) RemotePlayer(remote) { showPlayer = false } else FullPlayer { showPlayer = false } }
             if (showDevices) DevicesSheet { showDevices = false }
+            menu?.let { t -> TrackMenuSheet(t, { menu = null }) { s -> showPlayer = false; nav.push(s) } }
         }
     }
 }

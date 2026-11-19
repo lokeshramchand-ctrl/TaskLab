@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.media3.common.Player
 import com.lomu.app.lyrics.LyricsEntry
 import com.lomu.app.lyrics.LyricsUtils
+import com.lomu.app.extensions.metadata
 import com.lomu.app.models.MediaMetadata
 import com.lomu.app.playback.PlayerConnection
 import kotlinx.coroutines.delay
@@ -83,6 +84,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
     val m = meta
     var mode by remember { mutableStateOf(0) } // 0 artwork, 1 lyrics, 2 playing next
     val liked = song?.song?.liked == true
+    val openMenu = LocalTrackMenu.current
     val sub = lo.grey
 
     Box(Modifier.fillMaxSize().background(lo.bg)) {
@@ -128,6 +130,12 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                     }
                     Box(Modifier.size(32.dp).background(sub.copy(alpha = 0.25f), CircleShape).pressable(CircleShape) { pc.toggleLike() }, Alignment.Center) {
                         IcV(if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, 18.dp, if (liked) lo.signal else lo.ink)
+                    }
+                    if (m != null) {
+                        Spacer(Modifier.width(10.dp))
+                        Box(Modifier.size(32.dp).background(sub.copy(alpha = 0.25f), CircleShape).pressable(CircleShape) { openMenu(MenuTarget(m)) }, Alignment.Center) {
+                            IcV(Icons.Rounded.MoreHoriz, 18.dp, lo.ink)
+                        }
                     }
                 }
             }
@@ -286,7 +294,11 @@ private fun QueuePanel(pc: PlayerConnection) {
     LazyColumn(Modifier.fillMaxSize(), state = listState) {
         itemsIndexed(windows) { i, w ->
             val md = w.mediaItem.mediaMetadata
-            MediaRow(md.title?.toString().orEmpty(), md.artist?.toString().orEmpty(), md.artworkUri?.toString(), active = i == index, pad = 0.dp) { pc.player.seekToDefaultPosition(i) }
+            val meta = w.mediaItem.metadata
+            MediaRow(
+                md.title?.toString().orEmpty(), md.artist?.toString().orEmpty(), md.artworkUri?.toString(), active = i == index, pad = 0.dp,
+                menu = meta?.let { MenuTarget(it, if (i == index) null else "Remove from Queue", if (i == index) null else ({ pc.player.removeMediaItem(i) })) },
+            ) { pc.player.seekToDefaultPosition(i) }
         }
     }
 }

@@ -236,7 +236,10 @@ class ConnectClient @Inject constructor(
                 _target.value = null
                 c.playQueue(YouTubeQueue(WatchEndpoint(videoId = m.id), m))
             }
-            "enqueue" -> c.addToQueue(tracks(cmd.optJSONArray("tracks")).map { it.toMediaItem() })
+            "enqueue" -> tracks(cmd.optJSONArray("tracks")).map { it.toMediaItem() }.let { items ->
+                if (c.player.mediaItemCount == 0) c.playQueue(ListQueue(null, items))
+                else if (cmd.optBoolean("next")) c.playNext(items) else c.addToQueue(items)
+            }
             "handoff" -> cmd.optString("to").takeIf { it.isNotBlank() && it != selfId }?.let { handoffTo(it) }
         }
     }
@@ -265,6 +268,12 @@ class ConnectClient @Inject constructor(
         val slice = items.drop(from).take(300)
         val arr = JSONArray().also { a -> slice.forEach { a.put(sync.metadataToTrack(it)) } }
         send(to, JSONObject().put("type", "load").put("tracks", arr).put("index", index - from).put("position", 0).put("play", true))
+    }
+
+    /** Adds songs to the queue of a remote device (right after the current song when [next]). */
+    fun enqueueOn(to: String, items: List<MediaMetadata>, next: Boolean) {
+        val arr = JSONArray().also { a -> items.forEach { a.put(sync.metadataToTrack(it)) } }
+        send(to, JSONObject().put("type", "enqueue").put("tracks", arr).put("next", next))
     }
 
     fun radioOn(to: String, song: MediaMetadata) = send(to, JSONObject().put("type", "radio").put("track", sync.metadataToTrack(song)))

@@ -1679,6 +1679,9 @@ interface DatabaseDao {
     )
 
     @Transaction
+    @Query("DELETE FROM playlist_song_map WHERE id = :mapId")
+    fun deletePlaylistSongMap(mapId: Int)
+
     @Query("DELETE FROM playlist_song_map WHERE playlistId = :playlistId")
     fun clearPlaylist(playlistId: String)
 
