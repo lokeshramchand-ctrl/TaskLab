@@ -119,6 +119,7 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
                     dup = exists
                 }
             }
+            runCatching { sync?.sync() } // a failed sync (server off) is retried every minute
             done(if (dup) "Already in ${pl.playlist.name}" else "Added to ${pl.playlist.name}")
         }
     }
@@ -135,6 +136,7 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
                     insert(com.lomu.app.db.entities.PlaylistSongMap(playlistId = pl.id, songId = m.id, position = 0))
                 }
             }
+            runCatching { sync?.sync() }
             done("Added to $n")
         }
     }

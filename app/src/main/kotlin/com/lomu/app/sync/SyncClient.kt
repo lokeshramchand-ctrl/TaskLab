@@ -5,6 +5,7 @@ import com.lomu.app.db.MusicDatabase
 import com.lomu.app.db.entities.Event
 import com.lomu.app.constants.SongSortType
 import com.lomu.app.models.MediaMetadata
+import com.lomu.app.models.toMediaMetadata
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -147,7 +148,7 @@ class SyncClient @Inject constructor(
     }
 
     fun signOut() {
-        prefs.edit().remove("access").remove("refresh").remove("user").remove("seq").remove("liked").remove("lastEvent").apply()
+        prefs.edit().remove("access").remove("refresh").remove("user").remove("seq").remove("liked").remove("lastEvent").remove("plSnap").apply()
         _state.value = _state.value.copy(user = null, status = "Not signed in", error = null)
     }
 
@@ -192,6 +193,7 @@ class SyncClient @Inject constructor(
                     if (deleted && s.liked) update(s.copy(liked = false, likedDate = null))
                 }
             }
+            "playlist" -> applyPlaylist(d)
             "play" -> {
                 if (d.optBoolean("deleted")) return
                 val v = d.optJSONObject("value") ?: return
@@ -206,6 +208,59 @@ class SyncClient @Inject constructor(
                 }
             }
         }
+    }
+
+    // ---- Playlists. Only the user's own (local, editable) playlists sync; the phone's database stays the
+    // source of truth, so everything works offline and a change made while the server is away is
+    // simply pushed on the next successful sync. `plSnap` remembers what the server last agreed on.
+
+    private fun playlistSnapshot() = runCatching { JSONObject(prefs.getString("plSnap", null) ?: "{}") }.getOrDefault(JSONObject())
+
+    private fun playlistSig(p: com.lomu.app.db.entities.PlaylistEntity, songs: List<com.lomu.app.db.entities.Song>) =
+        p.name + "|" + songs.joinToString(",") { it.song.id }
+
+    /** id -> (playlist, its songs in order) for every playlist that takes part in sync. */
+    private suspend fun syncedPlaylists(): List<Pair<String, Pair<com.lomu.app.db.entities.PlaylistEntity, List<com.lomu.app.db.entities.Song>>>> =
+        database.playlists(com.lomu.app.constants.PlaylistSortType.CREATE_DATE, true).first()
+            .filter { it.playlist.isLocal && it.playlist.isEditable && it.playlist.bookmarkedAt != null }
+            .map { pl -> pl.playlist.id to (pl.playlist to database.playlistSongs(pl.playlist.id).first().map { it.song }) }
+
+    private suspend fun applyPlaylist(d: JSONObject) {
+        val id = d.getString("key")
+        val snap = playlistSnapshot()
+        val local = database.playlist(id).first()?.playlist
+        val localSongs = if (local != null) database.playlistSongs(id).first().map { it.song } else emptyList()
+        // Edited on this phone since the last sync: keep ours, the push below sends it.
+        if (local != null && snap.optString(id) != playlistSig(local, localSongs)) return
+        if (d.optBoolean("deleted")) {
+            if (local != null) database.withTransaction { delete(local) }
+            prefs.edit().putString("plSnap", snap.apply { remove(id) }.toString()).apply()
+            return
+        }
+        val v = d.optJSONObject("value") ?: return
+        val tracks = v.optJSONArray("tracks") ?: JSONArray()
+        val zone = ZoneId.systemDefault()
+        fun at(ms: Long) = LocalDateTime.ofInstant(Instant.ofEpochMilli(ms), zone)
+        val name = v.optString("name", "Playlist")
+        database.withTransaction {
+            val entity = (local ?: com.lomu.app.db.entities.PlaylistEntity(id = id, name = name, isLocal = true, bookmarkedAt = LocalDateTime.now()))
+                .copy(name = name, createdAt = at(v.optLong("createdAt", d.optLong("updated"))), lastUpdateTime = at(v.optLong("updatedAt", d.optLong("updated"))))
+            if (local == null) insert(entity) else update(entity)
+            clearPlaylist(id)
+            var pos = 0
+            val ids = ArrayList<String>()
+            for (i in 0 until tracks.length()) {
+                val t = tracks.getJSONObject(i)
+                val sid = t.optString("id")
+                if (sid.isBlank() || sid in ids) continue
+                if (song(sid).first() == null) trackToMetadata(t)?.let { insert(it) }
+                if (song(sid).first() == null) continue
+                insert(com.lomu.app.db.entities.PlaylistSongMap(playlistId = id, songId = sid, position = pos++))
+                ids += sid
+            }
+            snap.put(id, entity.name + "|" + ids.joinToString(","))
+        }
+        prefs.edit().putString("plSnap", snap.toString()).apply()
     }
 
     private suspend fun push() {
@@ -235,10 +290,24 @@ class SyncClient @Inject constructor(
                 .put("completed", completed).put("skipped", !completed && e.event.playTime < 30_000)
             docs.put(doc("play", "$at:${e.song.song.id}", v, at, false))
         }
+        val plSnap = playlistSnapshot()
+        val plNow = syncedPlaylists().associate { it.first to it.second }
+        val plSigs = JSONObject()
+        plNow.forEach { (id, pl) -> plSigs.put(id, playlistSig(pl.first, pl.second)) }
+        plNow.forEach { (id, pl) ->
+            if (plSnap.optString(id) != plSigs.getString(id)) {
+                val tracks = JSONArray().also { a -> pl.second.forEach { a.put(songToTrack(it)) } }
+                val created = pl.first.createdAt?.atZone(ZoneId.systemDefault())?.toInstant()?.toEpochMilli() ?: now
+                val v = JSONObject().put("id", id).put("name", pl.first.name).put("tracks", tracks).put("createdAt", created).put("updatedAt", now)
+                docs.put(doc("playlist", id, v, now, false))
+            }
+        }
+        plSnap.keys().forEach { id -> if (id !in plNow) docs.put(doc("playlist", id, null, now, true)) }
         if (docs.length() == 0) return
 
         val (code, o) = call { post("/api/sync", JSONObject().put("docs", docs), auth = true) }
         if (code != 200) error("push failed ($code)")
+        prefs.edit().putString("plSnap", plSigs.toString()).apply()
         // Our own writes are the next seq numbers; skip them so they are not pulled back.
         val seq = prefs.getLong("seq", 0)
         val edit = prefs.edit().putStringSet("liked", likedIds).putLong("lastEvent", events.lastOrNull()?.event?.id ?: lastEvent)
@@ -248,26 +317,79 @@ class SyncClient @Inject constructor(
 
     data class RecShelf(val title: String, val subtitle: String?, val tracks: List<MediaMetadata>)
 
-    /** Personalised shelves computed by the server from the synced listening history. */
+    /**
+     * Personalised shelves, computed on the phone from its own play log and likes (which sync keeps
+     * merged with the web player's). Candidates come from YouTube radio, so nothing here needs the
+     * homelab. The last good result is cached, so with no connection at all Home still shows it.
+     */
     suspend fun recs(): List<RecShelf> = withContext(Dispatchers.IO) {
-        if (!signedIn) return@withContext emptyList()
-        val request = { Request.Builder().url(base() + "/api/recs").header("Authorization", "Bearer ${prefs.getString("access", "")}").build() }
-        var r = http.newCall(request()).execute()
-        if (r.code == 401 && refresh()) { r.close(); r = http.newCall(request()).execute() }
-        r.use {
-            if (it.code != 200) return@withContext emptyList()
-            val arr = JSONArray(it.body?.string().orEmpty())
-            (0 until arr.length()).map { i ->
-                val sh = arr.getJSONObject(i)
-                val items = sh.getJSONArray("items")
-                RecShelf(
-                    sh.getString("title"),
-                    sh.optString("subtitle").ifBlank { null },
-                    (0 until items.length()).mapNotNull { j -> trackToMetadata(items.getJSONObject(j)) },
-                )
-            }.filter { it.tracks.isNotEmpty() }
+        val cached = loadRecsCache()
+        val built = runCatching { buildRecs() }.getOrNull()
+        when {
+            built == null || built.isEmpty() -> cached
+            else -> { saveRecsCache(built); built }
         }
     }
+
+    private suspend fun buildRecs(): List<RecShelf> {
+        val liked = database.likedSongs(SongSortType.CREATE_DATE, true).first()
+        val likes = liked.mapNotNull { s ->
+            val m = trackToMetadata(songToTrack(s)) ?: return@mapNotNull null
+            LikeDoc(m, s.song.likedDate?.atZone(ZoneId.systemDefault())?.toInstant()?.toEpochMilli() ?: System.currentTimeMillis())
+        }
+        val plays = database.events().first().take(3000).mapNotNull { e ->
+            val m = trackToMetadata(songToTrack(e.song)) ?: return@mapNotNull null
+            val dur = e.song.song.duration * 1000L
+            val completed = dur > 0 && e.event.playTime >= dur * 0.85
+            PlayDoc(m, e.event.timestamp.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(), e.event.playTime,
+                completed, !completed && e.event.playTime < 30_000)
+        }
+        if (plays.isEmpty() && likes.isEmpty()) return emptyList()
+
+        val aff = affinity(plays, likes, System.currentTimeMillis())
+        val seeds = aff.topTracks.take(5)
+        var radioOk = false
+        val cands = seeds.associate { seed ->
+            seed.id to (runCatching {
+                com.music.innertube.YouTube.next(com.music.innertube.models.WatchEndpoint(videoId = seed.id, playlistId = "RDAMVM${seed.id}"))
+                    .getOrThrow().items.map { it.toMediaMetadata() }.filter { it.id != seed.id }.take(30)
+            }.getOrNull()?.also { radioOk = true } ?: emptyList())
+        }
+        val shelves = ArrayList<RecShelf>()
+        if (radioOk) {
+            val ranked = rankCandidates(seeds, cands, aff)
+            val mix = diversify(ranked, 2).take(30)
+            if (mix.isNotEmpty()) shelves.add(RecShelf("Your Mix", "Made from what you play and like", mix))
+            if (aff.onRepeat.isNotEmpty()) shelves.add(RecShelf("On Repeat", "Your last 30 days", aff.onRepeat.take(15)))
+            for (seed in seeds.take(3)) {
+                val list = diversify(cands[seed.id].orEmpty().filter { it.id !in aff.heavilyPlayed && it.id !in aff.skipped }, 2).take(15)
+                if (list.size >= 5) shelves.add(RecShelf("Because you played ${seed.title}", null, list))
+            }
+            val fresh = ranked.filter { t -> t.artists.all { it.name.lowercase() !in aff.knownArtists } }
+            val discover = diversify(fresh, 1).take(20)
+            if (discover.size >= 5) shelves.add(RecShelf("Discover", "Artists you have not played yet", discover))
+        } // else: offline, so return nothing and let recs() fall back to the cached full set
+        return shelves
+    }
+
+    private fun saveRecsCache(shelves: List<RecShelf>) {
+        val arr = JSONArray()
+        shelves.forEach { sh ->
+            arr.put(JSONObject().put("title", sh.title).put("subtitle", sh.subtitle ?: JSONObject.NULL)
+                .put("items", JSONArray().also { a -> sh.tracks.forEach { a.put(metadataToTrack(it)) } }))
+        }
+        prefs.edit().putString("recsCache", arr.toString()).apply()
+    }
+
+    private fun loadRecsCache(): List<RecShelf> = runCatching {
+        val arr = JSONArray(prefs.getString("recsCache", null) ?: return emptyList())
+        (0 until arr.length()).map { i ->
+            val sh = arr.getJSONObject(i)
+            val items = sh.getJSONArray("items")
+            RecShelf(sh.getString("title"), sh.optString("subtitle").ifBlank { null },
+                (0 until items.length()).mapNotNull { j -> trackToMetadata(items.getJSONObject(j)) })
+        }.filter { it.tracks.isNotEmpty() }
+    }.getOrDefault(emptyList())
 
     private fun doc(kind: String, key: String, value: JSONObject?, updated: Long, deleted: Boolean) =
         JSONObject().put("kind", kind).put("key", key).put("value", value ?: JSONObject.NULL).put("updated", updated).put("deleted", deleted)

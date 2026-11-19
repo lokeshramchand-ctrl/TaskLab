@@ -6,7 +6,7 @@ set -uo pipefail
 ADB="${ADB:-/c/Softwares/platform-tools/adb}"
 [ -n "${1:-}" ] && ADB="$ADB -s $1"
 APK=app/build/outputs/apk/debug/app-debug.apk
-PKG=com.lomu.app.debug
+PKG=com.lomu.app
 OUT="${OUT:-smoke-out}"
 mkdir -p "$OUT"
 
