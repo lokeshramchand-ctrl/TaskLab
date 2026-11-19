@@ -24,6 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,7 +48,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.compositionLocalOf
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
+import androidx.palette.graphics.Palette
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
@@ -130,6 +139,28 @@ fun Ambient(url: String?, modifier: Modifier = Modifier, height: Dp = 380.dp, st
     }
 }
 
+/**
+ * The vivid colour of an artwork (Palette), used to wash a detail page behind its cover as Apple Music does.
+ * Null until the image has been read, or when it cannot be.
+ */
+@Composable
+fun rememberTint(url: String?): Color? {
+    val ctx = LocalContext.current
+    val tint by produceState<Color?>(null, url) {
+        value = null
+        if (url == null) return@produceState
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                val req = ImageRequest.Builder(ctx).data(url).size(96).allowHardware(false).build()
+                val bmp = SingletonImageLoader.get(ctx).execute(req).image?.toBitmap() ?: return@runCatching null
+                val p = Palette.from(bmp).maximumColorCount(16).generate()
+                (p.vibrantSwatch ?: p.mutedSwatch ?: p.dominantSwatch)?.rgb?.let { Color(it) }
+            }.getOrNull()
+        }
+    }
+    return tint
+}
+
 /** 0.5dp separator, inset from the left so it starts under the text, as in Apple Music lists. */
 @Composable
 fun Hairline(inset: Dp = 0.dp, modifier: Modifier = Modifier) {
@@ -200,7 +231,7 @@ private fun NowPlayingBars(tint: Color, modifier: Modifier = Modifier) = Ic(Ph.W
 @Composable
 fun MediaRow(
     title: String, line: String, thumb: String?, trailing: String? = null, index: Int? = null, active: Boolean = false,
-    separator: Boolean = true, pad: Dp = 20.dp, menu: MenuTarget? = null, onClick: () -> Unit,
+    separator: Boolean = true, pad: Dp = 20.dp, menu: MenuTarget? = null, flat: Boolean = false, onClick: () -> Unit,
 ) {
     val lo = LocalLo.current
     val openMenu = LocalTrackMenu.current
@@ -213,8 +244,8 @@ fun MediaRow(
                 }
             } else {
                 Box {
-                    Cover(thumb, 52.dp, radius = 6.dp)
-                    if (active) Box(Modifier.size(52.dp).background(Color(0x73000000), RoundedCornerShape(6.dp)), Alignment.Center) { NowPlayingBars(Color.White) }
+                    Cover(thumb, if (flat) 46.dp else 52.dp, radius = if (flat) 5.dp else 6.dp)
+                    if (active) Box(Modifier.size(if (flat) 46.dp else 52.dp).background(Color(0x73000000), RoundedCornerShape(6.dp)), Alignment.Center) { NowPlayingBars(Color.White) }
                 }
                 Spacer(Modifier.width(14.dp))
             }
@@ -222,11 +253,11 @@ fun MediaRow(
                 Text(title, style = LoType.body, color = if (active) lo.signal else lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (line.isNotBlank()) Text(line, style = LoType.small, color = lo.grey, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (trailing != null) Text(trailing, style = LoType.small, color = lo.grey, modifier = Modifier.padding(start = 10.dp))
+            if (trailing != null && !flat) Text(trailing, style = LoType.small, color = lo.grey, modifier = Modifier.padding(start = 10.dp))
             if (menu != null) Box(Modifier.size(40.dp).pressable(CircleShape) { openMenu(menu) }, Alignment.Center) { Ic(Ph.More, 22.dp, lo.grey) }
             else Spacer(Modifier.width(6.dp))
         }
-        if (separator) Hairline(inset)
+        if (separator && !flat) Hairline(inset)
     }
 }
 
@@ -238,8 +269,8 @@ fun playingId(): String? {
 }
 
 @Composable
-fun TrackRow(song: SongItem, index: Int? = null, onClick: () -> Unit) {
-    MediaRow(song.title, artistLine(song), song.thumbnail, song.duration?.let { formatTime(it * 1000L) }, index, playingId() == song.id, menu = MenuTarget(song.toMediaMetadata()), onClick = onClick)
+fun TrackRow(song: SongItem, index: Int? = null, flat: Boolean = false, onClick: () -> Unit) {
+    MediaRow(song.title, artistLine(song), song.thumbnail, song.duration?.let { formatTime(it * 1000L) }, index, playingId() == song.id, menu = MenuTarget(song.toMediaMetadata()), flat = flat, onClick = onClick)
 }
 
 /** Shelf card: square art with a soft edge, one line of title, one of grey detail. */

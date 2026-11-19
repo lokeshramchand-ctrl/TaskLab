@@ -215,3 +215,15 @@ private fun MenuRow(icon: Ph, label: String, tint: Color? = null, sub: String? =
         }
     }
 }
+
+/** "Add to Library" for an album or playlist: keeps its songs as a playlist of your own. */
+suspend fun saveAsPlaylist(db: com.lomu.app.db.MusicDatabase, name: String, songs: List<MediaMetadata>) = withContext(Dispatchers.IO) {
+    db.withTransaction {
+        val pl = PlaylistEntity(name = name, bookmarkedAt = LocalDateTime.now(), isLocal = true, thumbnailUrl = songs.firstOrNull()?.thumbnailUrl)
+        insert(pl)
+        songs.forEachIndexed { i, m ->
+            insert(m)
+            insert(com.lomu.app.db.entities.PlaylistSongMap(playlistId = pl.id, songId = m.id, position = i))
+        }
+    }
+}

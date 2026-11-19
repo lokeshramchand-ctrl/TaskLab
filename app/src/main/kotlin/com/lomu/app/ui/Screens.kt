@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -417,7 +421,7 @@ fun LikedScreen() {
         }
         if (songs.isEmpty()) item { EmptyState(Ph.Heart, "No Liked Songs", "Tap the heart in the player to add songs here.") }
         itemsIndexed(songs) { i, s ->
-            MediaRow(s.song.title, s.artists.joinToString { it.name }, s.song.thumbnailUrl, active = now == s.song.id, menu = MenuTarget(s.toMediaMetadata())) {
+            MediaRow(s.song.title, s.artists.joinToString { it.name }, s.song.thumbnailUrl, active = now == s.song.id, flat = true, menu = MenuTarget(s.toMediaMetadata())) {
                 player?.playMediaItems("Liked", songs.map { it.toMediaItem() }, i)
             }
         }
@@ -440,46 +444,46 @@ fun PlaylistsScreen() {
 // ================================================================================ Detail pages
 
 /**
- * Album / playlist page: centred art, headline, red artist line, caption and two grey Play / Shuffle buttons.
- * With [hero] (artists) the art runs edge to edge with the name over it and a red play button.
+ * Album / playlist / artist page in the Apple Music (iOS 26.4) style: a wash of the artwork's colour behind
+ * everything, large centred cover, bold title, tinted artist line, caption, glass Shuffle / white Play / add
+ * buttons ([actions]) and flat song rows underneath.
  */
 @Composable
 private fun Detail(
     cover: String?, title: String, accent: String?, caption: String,
-    hero: Boolean = false, onPlay: (() -> Unit)? = null,
+    round: Boolean = false,
     actions: (@Composable RowScope.() -> Unit)? = null,
     body: LazyListScope.() -> Unit,
 ) {
     val lo = LocalLo.current
     val nav = LocalNav.current
+    val base = rememberTint(cover) ?: lo.surface2
+    val wash by androidx.compose.animation.animateColorAsState(base, tween(600), label = "wash")
+    val state = androidx.compose.foundation.lazy.rememberLazyListState()
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
+        // The wash scrolls away with the header, then the page is plain.
+        Box(
+            Modifier.fillMaxWidth().height(720.dp)
+                .graphicsLayer { translationY = -(if (state.firstVisibleItemIndex == 0) state.firstVisibleItemScrollOffset.toFloat() else 100_000f) }
+                .background(Brush.verticalGradient(listOf(
+                    androidx.compose.ui.graphics.lerp(lo.bg, wash, if (lo.dark) 0.62f else 0.72f),
+                    androidx.compose.ui.graphics.lerp(lo.bg, wash, if (lo.dark) 0.28f else 0.34f),
+                    lo.bg,
+                ))),
+        )
+        LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(bottom = bottomPad())) {
             item {
-                if (hero) {
-                    Box(Modifier.fillMaxWidth().height(380.dp).background(lo.surface2)) {
-                        AsyncImage(model = cover, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0x99000000)), startY = 400f)))
-                        Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 18.dp), verticalAlignment = Alignment.Bottom) {
-                            Text(title, style = LoType.hero, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                            if (onPlay != null) Box(Modifier.size(44.dp).background(lo.signal, CircleShape).pressable(CircleShape, onClick = onPlay), Alignment.Center) {
-                                IcV(Icons.Rounded.PlayArrow, 28.dp, Color.White)
-                            }
-                        }
+                Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 56.dp, start = 40.dp, end = 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    BoxWithConstraints(Modifier.fillMaxWidth(), Alignment.Center) {
+                        val side = minOf(maxWidth, 270.dp)
+                        Cover(cover, side, round = round, radius = 16.dp, modifier = Modifier.coverShadow(if (round) side / 2 else 16.dp, 16.dp))
                     }
-                    if (caption.isNotBlank()) Text(caption, style = LoType.small, color = lo.grey, modifier = Modifier.padding(start = 20.dp, top = 10.dp))
-                } else {
-                    Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 56.dp, start = 40.dp, end = 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        BoxWithConstraints(Modifier.fillMaxWidth(), Alignment.Center) {
-                            val side = minOf(maxWidth, 270.dp)
-                            Cover(cover, side, radius = 16.dp, modifier = Modifier.coverShadow(16.dp, 16.dp))
-                        }
-                        Spacer(Modifier.height(20.dp))
-                        Text(title, style = LoType.title.copy(fontSize = 20.sp, lineHeight = 25.sp), color = lo.ink, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                        if (!accent.isNullOrBlank()) Text(accent, style = LoType.body, color = lo.grey, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (caption.isNotBlank()) Text(caption, style = LoType.small.copy(fontSize = 12.sp), color = lo.grey, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
-                    }
+                    Spacer(Modifier.height(22.dp))
+                    Text(title, style = LoType.title.copy(fontSize = 22.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold), color = lo.ink, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    if (!accent.isNullOrBlank()) Text(accent, style = LoType.body.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold), color = androidx.compose.ui.graphics.lerp(wash, lo.ink, 0.3f), textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+                    if (caption.isNotBlank()) Text(caption, style = LoType.small.copy(fontSize = 12.sp), color = lo.grey, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 3.dp))
                 }
-                if (actions != null) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically, content = actions)
+                if (actions != null) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically, content = actions)
                 else Spacer(Modifier.height(8.dp))
             }
             body()
@@ -488,12 +492,30 @@ private fun Detail(
     }
 }
 
-/** Round shuffle button beside a wide ink Play pill, the pairing used on album and playlist pages. */
+/** Glass round button used beside the Play pill (Shuffle, add to library, radio). */
 @Composable
-private fun RowScope.PlayShuffle(play: () -> Unit, shuffle: () -> Unit) {
+private fun GlassRound(icon: ImageVector, label: String, onClick: () -> Unit) {
     val lo = LocalLo.current
-    Box(Modifier.size(46.dp).background(lo.surface2, CircleShape).pressable(CircleShape, onClick = shuffle), Alignment.Center) { IcV(Icons.Rounded.Shuffle, 22.dp, lo.ink) }
-    Pill("Play", play, filled = true, iconV = Icons.Rounded.PlayArrow, modifier = Modifier.width(150.dp))
+    Box(Modifier.size(46.dp).background(lo.ink.copy(alpha = 0.12f), CircleShape).pressable(CircleShape, onClick = onClick), Alignment.Center) { IcV(icon, 21.dp, lo.ink) }
+}
+
+/**
+ * Round glass Shuffle, a wide white Play pill and an optional round third button ([extra], e.g. add to library
+ * or start radio), the row under the cover on album, playlist and artist pages.
+ */
+@Composable
+private fun RowScope.PlayShuffle(play: () -> Unit, shuffle: () -> Unit, extraIcon: ImageVector? = null, extraLabel: String = "", extra: (() -> Unit)? = null) {
+    GlassRound(Ph.Shuffle.vector, "Shuffle", shuffle)
+    Row(
+        Modifier.width(176.dp).height(46.dp).shadow(10.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.2f), spotColor = Color.Black.copy(alpha = 0.2f))
+            .background(Color.White.copy(alpha = 0.95f), CircleShape).pressable(CircleShape, onClick = play),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IcV(Ph.Play.vector, 18.dp, Color(0xFF111111))
+        Spacer(Modifier.width(8.dp))
+        Text("Play", style = LoType.body.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp), color = Color(0xFF111111))
+    }
+    if (extraIcon != null && extra != null) GlassRound(extraIcon, extraLabel, extra)
 }
 
 @Composable
@@ -505,12 +527,21 @@ fun AlbumScreen(id: String) {
         is Load.Err -> Box(Modifier.fillMaxSize()) { ErrorBox(st.message); TopBar("", LocalNav.current::pop) }
         is Load.Ok -> {
             val page = st.value
+            val scope = rememberCoroutineScope()
+            val ctx = LocalContext.current
             Detail(
                 page.album.thumbnail, page.album.title, page.album.artists?.joinToString(", ") { it.name },
-                listOfNotNull(page.album.year?.toString(), "${page.songs.size} songs").joinToString(" · "),
-                actions = { PlayShuffle({ player?.playList(page.album.title, page.songs) }, { player?.playList(page.album.title, page.songs.shuffled()) }) },
+                listOfNotNull("Album", page.album.year?.toString(), "${page.songs.size} songs").joinToString(" · "),
+                actions = {
+                    PlayShuffle(
+                        { player?.playList(page.album.title, page.songs) }, { player?.playList(page.album.title, page.songs.shuffled()) },
+                        Ph.Plus.vector, "Add to Library",
+                    ) {
+                        player?.database?.let { d -> scope.launch { saveAsPlaylist(d, page.album.title, page.songs.map { it.toMediaMetadata() }); android.widget.Toast.makeText(ctx, "Added to Library", android.widget.Toast.LENGTH_SHORT).show() } }
+                    }
+                },
             ) {
-                itemsIndexed(page.songs) { i, s -> TrackRow(s, index = i) { player?.playList(page.album.title, page.songs, i) } }
+                itemsIndexed(page.songs) { i, s -> TrackRow(s, flat = true) { player?.playList(page.album.title, page.songs, i) } }
             }
         }
     }
@@ -525,11 +556,20 @@ fun PlaylistScreen(id: String) {
         is Load.Err -> Box(Modifier.fillMaxSize()) { ErrorBox(st.message); TopBar("", LocalNav.current::pop) }
         is Load.Ok -> {
             val page = st.value
+            val scope = rememberCoroutineScope()
+            val ctx = LocalContext.current
             Detail(
                 page.playlist.thumbnail, page.playlist.title, page.playlist.author?.name, page.playlist.songCountText.orEmpty(),
-                actions = { PlayShuffle({ player?.playPlaylist(id, page.playlist.title, page.songs, page.songsContinuation) }, { player?.playList(page.playlist.title, page.songs.shuffled()) }) },
+                actions = {
+                    PlayShuffle(
+                        { player?.playPlaylist(id, page.playlist.title, page.songs, page.songsContinuation) }, { player?.playList(page.playlist.title, page.songs.shuffled()) },
+                        Ph.Plus.vector, "Add to Library",
+                    ) {
+                        player?.database?.let { d -> scope.launch { saveAsPlaylist(d, page.playlist.title, page.songs.map { it.toMediaMetadata() }); android.widget.Toast.makeText(ctx, "Added to Library", android.widget.Toast.LENGTH_SHORT).show() } }
+                    }
+                },
             ) {
-                itemsIndexed(page.songs) { i, s -> TrackRow(s) { player?.playPlaylist(id, page.playlist.title, page.songs, page.songsContinuation, i) } }
+                itemsIndexed(page.songs) { i, s -> TrackRow(s, flat = true) { player?.playPlaylist(id, page.playlist.title, page.songs, page.songsContinuation, i) } }
             }
         }
     }
@@ -548,15 +588,20 @@ fun ArtistScreen(id: String) {
             val page = st.value
             val firstSongs = page.sections.map { it.items.filterIsInstance<SongItem>() }.firstOrNull { it.isNotEmpty() }.orEmpty()
             Detail(
-                page.artist.thumbnail, page.artist.title, null, page.subscriberCountText.orEmpty(), hero = true,
-                onPlay = if (firstSongs.isNotEmpty()) ({ player?.playList(page.artist.title, firstSongs) }) else null,
+                page.artist.thumbnail, page.artist.title, page.subscriberCountText, "", round = true,
+                actions = if (firstSongs.isEmpty()) null else ({
+                    PlayShuffle(
+                        { player?.playList(page.artist.title, firstSongs) }, { player?.playList(page.artist.title, firstSongs.shuffled()) },
+                        Ph.Radio.vector, "Start Radio",
+                    ) { player?.playRadio(firstSongs.first()) }
+                }),
             ) {
                 items(page.sections) { sec ->
                     val songs = sec.items.filterIsInstance<SongItem>()
                     if (songs.isNotEmpty() && songs.size == sec.items.size) {
                         Column {
                             CaptionedTitle(sec.title, null, "See All") { player?.playList(sec.title, songs) }
-                            songs.take(5).forEachIndexed { i, s -> TrackRow(s) { player?.playList(sec.title, songs, i) } }
+                            songs.take(5).forEachIndexed { i, s -> TrackRow(s, flat = true) { player?.playList(sec.title, songs, i) } }
                         }
                     } else Shelf(sec.title, sec.items)
                 }
@@ -594,7 +639,7 @@ fun LocalPlaylistScreen(id: String) {
         if (songs.isEmpty()) item { EmptyState(Ph.Playlist, "This playlist is empty") }
         itemsIndexed(songs) { i, s ->
             MediaRow(
-                s.song.song.title, s.song.artists.joinToString { it.name }, s.song.song.thumbnailUrl, active = now == s.song.song.id,
+                s.song.song.title, s.song.artists.joinToString { it.name }, s.song.song.thumbnailUrl, active = now == s.song.song.id, flat = true,
                 menu = MenuTarget(s.song.toMediaMetadata(), "Remove from this Playlist") { player?.database?.let { d -> scope.launch(kotlinx.coroutines.Dispatchers.IO) { d.withTransaction { deletePlaylistSongMap(s.map.id) } } } },
             ) {
                 player?.playMediaItems("Playlist", items, i)
