@@ -265,3 +265,11 @@ LoMu/
 │  └─ tests/           unit/ (vitest), e2e/ (Playwright), shots.mjs (screenshot tour)
 └─ PROGRESS.md     this file
 ```
+
+---
+
+## Phone auto-update on push
+
+`git config core.hooksPath .githooks` (once per clone) enables `.githooks/pre-push`. After a push that touches the Android code it runs `scripts/update-phone.sh` in the background: build the debug APK, then `adb install -r` on every connected phone, which updates the installed app in place (data and sign-in kept). If no phone is connected over adb it skips silently; the push is never blocked. Log: `.git/phone-update.log`. Run it by hand any time with `scripts/update-phone.sh`.
+
+The in-place update only works while builds are signed with the same key, so build on this PC (the debug key) and do not uninstall the app first.
