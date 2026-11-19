@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateListOf
 
 sealed interface Screen {
     data object Home : Screen
+    data object New : Screen
     data object Search : Screen
     data object Library : Screen
     data object Settings : Screen

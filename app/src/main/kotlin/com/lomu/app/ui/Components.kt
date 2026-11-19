@@ -13,7 +13,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -42,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.compositionLocalOf
 import coil3.compose.AsyncImage
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
@@ -97,7 +100,7 @@ fun IconBtnV(icon: ImageVector, onClick: () -> Unit, size: Dp = 40.dp, iconSize:
 
 /** Artwork: a hairline-edged rounded square with the placeholder grey behind it, like an Apple Music album cover. */
 @Composable
-fun Cover(url: String?, size: Dp, round: Boolean = false, modifier: Modifier = Modifier, radius: Dp = 8.dp) {
+fun Cover(url: String?, size: Dp, round: Boolean = false, modifier: Modifier = Modifier, radius: Dp = 10.dp) {
     val lo = LocalLo.current
     val shape = if (round) CircleShape else RoundedCornerShape(radius)
     AsyncImage(
@@ -114,13 +117,13 @@ fun Modifier.coverShadow(radius: Dp, elevation: Dp = 18.dp): Modifier =
 
 /** Blurred artwork that fades into the page background; sits behind a detail header. */
 @Composable
-fun Ambient(url: String?, modifier: Modifier = Modifier, height: Dp = 380.dp) {
+fun Ambient(url: String?, modifier: Modifier = Modifier, height: Dp = 380.dp, strength: Float? = null) {
     val lo = LocalLo.current
     if (url == null) return
     Box(modifier.fillMaxWidth().height(height)) {
         AsyncImage(
             model = url, contentDescription = null, contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize().blur(80.dp).alpha(if (lo.dark) 0.42f else 0.30f),
+            modifier = Modifier.fillMaxSize().blur(80.dp).alpha(strength ?: if (lo.dark) 0.42f else 0.30f),
         )
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, lo.bg))))
     }
@@ -136,14 +139,14 @@ fun Hairline(inset: Dp = 0.dp, modifier: Modifier = Modifier) {
 
 /** Shelf heading: bold title with a trailing chevron, or an accent action link. */
 @Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: (() -> Unit)? = null) {
+fun SectionTitle(text: String, modifier: Modifier = Modifier, action: String? = null, chevron: Boolean = true, onAction: (() -> Unit)? = null) {
     val lo = LocalLo.current
     Row(modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 26.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = LoType.section, color = lo.ink, modifier = Modifier.weight(1f, fill = false))
+        val hasAction = action != null && onAction != null
+        Text(text, style = LoType.section.copy(fontSize = 20.sp, lineHeight = 25.sp), color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = hasAction))
         if (action != null && onAction != null) {
-            Spacer(Modifier.weight(1f))
             Text(action, style = LoType.body.copy(fontWeight = FontWeight.Normal), color = lo.signal, modifier = Modifier.pressable(CircleShape, onClick = onAction).padding(horizontal = 8.dp, vertical = 4.dp))
-        } else {
+        } else if (chevron) {
             Icon(Icons.Rounded.ChevronRight, null, tint = lo.grey, modifier = Modifier.padding(start = 2.dp, top = 3.dp).size(22.dp))
         }
     }
@@ -196,12 +199,12 @@ private fun NowPlayingBars(tint: Color, modifier: Modifier = Modifier) = Ic(Ph.W
 @Composable
 fun MediaRow(
     title: String, line: String, thumb: String?, trailing: String? = null, index: Int? = null, active: Boolean = false,
-    separator: Boolean = true, onClick: () -> Unit,
+    separator: Boolean = true, pad: Dp = 20.dp, onClick: () -> Unit,
 ) {
     val lo = LocalLo.current
-    val inset = if (index != null) 56.dp else 80.dp
+    val inset = pad + if (index != null) 36.dp else 66.dp
     Column(Modifier.fillMaxWidth().pressable(RoundedCornerShape(0.dp), onClick = onClick)) {
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(start = pad, end = if (pad < 12.dp) 0.dp else 12.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
             if (index != null) {
                 Box(Modifier.width(36.dp)) {
                     if (active) NowPlayingBars(lo.signal) else Text("${index + 1}", style = LoType.body, color = lo.grey)
@@ -290,19 +293,19 @@ fun Shelf(title: String, items: List<YTItem>) {
 // ---------- buttons, segmented control, bars ----------
 
 /**
- * Apple Music button: [filled] is the solid red call to action, otherwise the quiet grey capsule with red text
- * used for Play and Shuffle on album pages.
+ * Apple Music capsule button. [filled] is the solid ink Play button (black on light, white on dark),
+ * otherwise a quiet grey capsule with ink text; [accent] gives the solid blue call to action.
  */
 @Composable
-fun Pill(text: String, onClick: () -> Unit, filled: Boolean = true, icon: Ph? = null, modifier: Modifier = Modifier, iconV: ImageVector? = null) {
+fun Pill(text: String, onClick: () -> Unit, filled: Boolean = true, icon: Ph? = null, modifier: Modifier = Modifier, iconV: ImageVector? = null, accent: Boolean = false) {
     val lo = LocalLo.current
-    val shape = RoundedCornerShape(12.dp)
-    val fg = if (filled) Color.White else lo.signal
+    val bgc = if (accent) lo.signal else if (filled) lo.ink else lo.surface2
+    val fg = if (accent) Color.White else if (filled) lo.bg else lo.ink
     Row(
-        modifier.height(48.dp)
-            .background(if (filled) lo.signal else lo.surface2, shape)
-            .pressable(shape, onClick = onClick)
-            .padding(horizontal = 20.dp),
+        modifier.height(46.dp)
+            .background(bgc, CircleShape)
+            .pressable(CircleShape, onClick = onClick)
+            .padding(horizontal = 22.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
     ) {
         if (icon != null) { Ic(icon, 18.dp, fg); Spacer(Modifier.width(8.dp)) }
@@ -310,6 +313,32 @@ fun Pill(text: String, onClick: () -> Unit, filled: Boolean = true, icon: Ph? = 
         Text(text, style = LoType.body.copy(fontWeight = FontWeight.SemiBold), color = fg)
     }
 }
+
+/** Frosted round control (back, add, more) that floats over artwork. */
+@Composable
+fun GlassCircle(icon: ImageVector, onClick: () -> Unit, size: Dp = 42.dp, tint: Color = LocalLo.current.ink, modifier: Modifier = Modifier) {
+    val lo = LocalLo.current
+    Box(
+        modifier.size(size).shadow(6.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.18f))
+            .background(lo.card.copy(alpha = 0.92f), CircleShape).border(0.5.dp, lo.line.copy(alpha = 0.7f), CircleShape)
+            .pressable(CircleShape, onClick = onClick),
+        Alignment.Center,
+    ) { IcV(icon, size * 0.5f, tint) }
+}
+
+/** Account avatar shown top-right on the main pages. */
+@Composable
+fun Avatar(initial: String, onClick: () -> Unit, size: Dp = 36.dp) {
+    Box(
+        Modifier.size(size).background(Brush.linearGradient(listOf(Color(0xFFC3B1F5), Color(0xFF6F7BD9))), CircleShape).pressable(CircleShape, onClick = onClick),
+        Alignment.Center,
+    ) { Text(initial.take(2).uppercase(), style = LoType.body.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold), color = Color.White) }
+}
+
+/** Floating glass surface used by the mini player and the tab bar. */
+fun Modifier.glass(shape: Shape, lo: Lo): Modifier =
+    shadow(14.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
+        .background(lo.card, shape).border(0.5.dp, lo.line.copy(alpha = 0.8f), shape)
 
 /** iOS segmented control: a grey track with a raised white (or lifted grey) thumb under the selection. */
 @Composable
@@ -343,9 +372,9 @@ fun Chips(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifie
             val on = i == selected
             Text(
                 options[i], style = LoType.small.copy(fontWeight = FontWeight.SemiBold),
-                color = if (on) lo.bg else lo.ink,
+                color = if (on) Color.White else lo.ink,
                 modifier = Modifier
-                    .background(if (on) lo.ink else lo.surface2, CircleShape)
+                    .background(if (on) lo.signal else lo.surface2, CircleShape)
                     .pressable(CircleShape) { onSelect(i) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -353,16 +382,12 @@ fun Chips(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifie
     }
 }
 
-/** Floating back control over detail art: a red chevron in a frosted circle. */
+/** Floating glass back control over detail art. */
 @Composable
 fun TopBar(title: String, onBack: (() -> Unit)?, modifier: Modifier = Modifier) {
     val lo = LocalLo.current
-    Row(modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (onBack != null) {
-            Box(Modifier.size(38.dp).background(lo.card.copy(alpha = 0.88f), CircleShape).pressable(CircleShape, onClick = onBack), Alignment.Center) {
-                Ic(Ph.Left, 18.dp, lo.signal)
-            }
-        } else Spacer(Modifier.width(8.dp))
+    Row(modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (onBack != null) GlassCircle(androidx.compose.material.icons.Icons.Rounded.ChevronLeft, onBack)
         if (title.isNotBlank()) Text(title, style = LoType.body.copy(fontWeight = FontWeight.SemiBold), color = lo.ink, modifier = Modifier.padding(start = 12.dp))
     }
 }
@@ -381,9 +406,9 @@ fun PageTitle(eyebrow: String, title: String, sub: String? = null) {
 @Composable
 fun SearchField(value: String, onChange: (String) -> Unit, hint: String, onSearch: () -> Unit, modifier: Modifier = Modifier) {
     val lo = LocalLo.current
-    val shape = RoundedCornerShape(12.dp)
+    val shape = CircleShape
     Row(
-        modifier.fillMaxWidth().height(44.dp).background(lo.surface2, shape).padding(start = 12.dp, end = 6.dp),
+        modifier.fillMaxWidth().height(46.dp).background(lo.surface2, shape).padding(start = 14.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Ic(Ph.Search, 19.dp, lo.grey)
@@ -400,5 +425,12 @@ fun SearchField(value: String, onChange: (String) -> Unit, hint: String, onSearc
             },
         )
         if (value.isNotEmpty()) IconBtn(Ph.Close, { onChange("") }, size = 32.dp, iconSize = 14.dp, tint = lo.grey)
+        else IcV(Icons.Rounded.Mic, 20.dp, lo.grey, Modifier.padding(end = 6.dp))
     }
 }
+
+/** Space the floating mini player and tab bar take at the bottom, so lists can scroll clear of them. */
+val LocalBottomInset = compositionLocalOf { 0.dp }
+
+@Composable
+fun bottomPad(): Dp = LocalBottomInset.current + 24.dp

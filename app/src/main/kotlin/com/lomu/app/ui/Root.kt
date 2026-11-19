@@ -26,11 +26,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
-import androidx.compose.material.icons.outlined.PlayCircle
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
 
@@ -39,7 +39,7 @@ fun Welcome(onStart: () -> Unit) {
     val lo = LocalLo.current
     Column(Modifier.fillMaxSize().background(lo.bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 28.dp, vertical = 24.dp)) {
         Spacer(Modifier.weight(1f))
-        Box(Modifier.size(72.dp).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFFFF5E7A), lo.signal)), RoundedCornerShape(17.dp)), Alignment.Center) {
+        Box(Modifier.size(72.dp).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF5AC8FA), lo.signal)), RoundedCornerShape(17.dp)), Alignment.Center) {
             IcV(androidx.compose.material.icons.Icons.Rounded.MusicNote, 40.dp, Color.White)
         }
         Spacer(Modifier.height(24.dp))
@@ -61,7 +61,7 @@ fun Welcome(onStart: () -> Unit) {
             }
         }
         Spacer(Modifier.weight(1f))
-        Pill("Continue", onStart, modifier = Modifier.fillMaxWidth().height(52.dp))
+        Pill("Continue", onStart, accent = true, modifier = Modifier.fillMaxWidth().height(52.dp))
     }
 }
 
@@ -81,30 +81,37 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
     BackHandler(enabled = showPlayer || nav.canPop) {
         if (showPlayer) showPlayer = false else nav.pop()
     }
-    CompositionLocalProvider(LocalNav provides nav) {
+    // Tab bar 58dp + gaps, plus the mini player capsule (48dp) when something is loaded.
+    val inset = (if (meta != null) 138.dp else 82.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    CompositionLocalProvider(LocalNav provides nav, LocalBottomInset provides inset) {
         Box(Modifier.fillMaxSize().background(lo.bg)) {
-            Column(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f)) {
-                    AnimatedContent(
-                        targetState = nav.current,
-                        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) },
-                        label = "screen",
-                    ) { screen ->
-                        when (screen) {
-                            Screen.Home -> HomeScreen()
-                            Screen.Search -> SearchScreen()
-                            Screen.Library -> LibraryScreen()
-                            Screen.Settings -> SettingsScreen()
-                            is Screen.Album -> AlbumScreen(screen.id)
-                            is Screen.Artist -> ArtistScreen(screen.id)
-                            is Screen.Playlist -> PlaylistScreen(screen.id)
-                            is Screen.LocalPlaylist -> LocalPlaylistScreen(screen.id)
-                            Screen.Import -> ImportScreen()
-                            Screen.Liked -> LikedScreen()
-                            Screen.Playlists -> PlaylistsScreen()
-                        }
-                    }
+            AnimatedContent(
+                targetState = nav.current,
+                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) },
+                label = "screen",
+                modifier = Modifier.fillMaxSize(),
+            ) { screen ->
+                when (screen) {
+                    Screen.Home -> HomeScreen()
+                    Screen.New -> NewScreen()
+                    Screen.Search -> SearchScreen()
+                    Screen.Library -> LibraryScreen()
+                    Screen.Settings -> SettingsScreen()
+                    is Screen.Album -> AlbumScreen(screen.id)
+                    is Screen.Artist -> ArtistScreen(screen.id)
+                    is Screen.Playlist -> PlaylistScreen(screen.id)
+                    is Screen.LocalPlaylist -> LocalPlaylistScreen(screen.id)
+                    Screen.Import -> ImportScreen()
+                    Screen.Liked -> LikedScreen()
+                    Screen.Playlists -> PlaylistsScreen()
                 }
+            }
+            // Soft fade so rows slide under the floating bars instead of being cut off.
+            Box(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(inset + 8.dp)
+                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, lo.bg.copy(alpha = 0.92f), lo.bg))),
+            )
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp).padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (meta != null) MiniPlayer({ showPlayer = true })
                 TabBar(nav)
             }
@@ -119,28 +126,32 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
 
 private data class TabDef(val label: String, val on: ImageVector, val off: ImageVector, val screen: Screen)
 
+/**
+ * Floating glass capsule with the tabs. As in the reference, every glyph is a bold filled symbol,
+ * the selected tab sits in a grey pill and turns blue, labels are 10pt bold.
+ */
 @Composable
 private fun TabBar(nav: Nav) {
     val lo = LocalLo.current
     val tabs = listOf(
-        TabDef("Listen Now", Icons.Filled.PlayCircle, Icons.Outlined.PlayCircle, Screen.Home),
+        TabDef("Home", Icons.Filled.Home, Icons.Filled.Home, Screen.Home),
+        TabDef("New", Icons.Filled.GridView, Icons.Filled.GridView, Screen.New),
+        TabDef("Library", Icons.Filled.LibraryMusic, Icons.Filled.LibraryMusic, Screen.Library),
         TabDef("Search", Icons.Rounded.Search, Icons.Rounded.Search, Screen.Search),
-        TabDef("Library", Icons.Filled.LibraryMusic, Icons.Outlined.LibraryMusic, Screen.Library),
-        TabDef("Settings", Icons.Filled.Settings, Icons.Outlined.Settings, Screen.Settings),
     )
-    Column(Modifier.fillMaxWidth().background(lo.card)) {
-        Hairline()
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 6.dp, bottom = 4.dp)) {
-            tabs.forEach { t ->
-                val active = nav.stack.first() == t.screen
-                val tint = if (active) lo.signal else lo.grey
-                Column(
-                    Modifier.weight(1f).pressable(RoundedCornerShape(8.dp)) { nav.tab(t.screen) }.padding(vertical = 2.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    IcV(if (active) t.on else t.off, 26.dp, tint)
-                    Text(t.label, style = LoType.caption, color = tint, modifier = Modifier.padding(top = 2.dp))
-                }
+    val shape = RoundedCornerShape(36.dp)
+    Row(Modifier.fillMaxWidth().height(58.dp).glass(shape, lo).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        tabs.forEach { t ->
+            val active = nav.stack.first() == t.screen
+            val tint = if (active) lo.signal else lo.ink
+            Column(
+                Modifier.weight(1f).fillMaxHeight()
+                    .background(if (active) lo.surface2 else Color.Transparent, RoundedCornerShape(30.dp))
+                    .pressable(RoundedCornerShape(30.dp)) { nav.tab(t.screen) },
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+            ) {
+                IcV(if (active) t.on else t.off, 24.dp, tint)
+                Text(t.label, style = LoType.caption.copy(fontWeight = FontWeight.Bold, lineHeight = 12.sp), color = tint, modifier = Modifier.padding(top = 2.dp))
             }
         }
     }

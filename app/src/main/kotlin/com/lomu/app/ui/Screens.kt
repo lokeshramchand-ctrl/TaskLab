@@ -58,14 +58,28 @@ private fun likedSongs(): List<Song> {
     return songs
 }
 
-/** Section heading with a grey caption under it, as on "Top Picks / More from ...". */
+/** Page title row: large bold title on the left, the account avatar on the right (opens Settings). */
+@Composable
+private fun TitleBar(title: String) {
+    val lo = LocalLo.current
+    val nav = LocalNav.current
+    val sync = LocalSync.current
+    val fallback = remember { kotlinx.coroutines.flow.MutableStateFlow(com.lomu.app.sync.SyncState()) }
+    val st by (sync?.state ?: fallback).collectAsState()
+    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = LoType.hero, color = lo.ink, modifier = Modifier.weight(1f))
+        Avatar(st.user?.take(2) ?: "LM", { nav.push(Screen.Settings) })
+    }
+}
+
+/** Section heading with a grey caption under it, as on "Top Picks for you / Mood for You". */
 @Composable
 private fun CaptionedTitle(title: String, caption: String?, action: String? = null, onAction: (() -> Unit)? = null) {
     val lo = LocalLo.current
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 22.dp, bottom = 10.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = LoType.section, color = lo.ink)
-            if (caption != null) Text(caption, style = LoType.small, color = lo.grey)
+            Text(title, style = LoType.section.copy(fontSize = 20.sp, lineHeight = 25.sp), color = lo.ink)
+            if (caption != null) Text(caption, style = LoType.small.copy(fontSize = 14.sp), color = lo.grey)
         }
         if (action != null && onAction != null) {
             Text(action, style = LoType.sub, color = lo.signal, modifier = Modifier.pressable(CircleShape, onClick = onAction).padding(horizontal = 8.dp, vertical = 4.dp))
@@ -73,16 +87,16 @@ private fun CaptionedTitle(title: String, caption: String?, action: String? = nu
     }
 }
 
-/** Large portrait card: full art with a tinted caption plate at the foot (Listen Now "Top Picks"). */
+/** Large portrait card: full art with a tinted caption plate at the foot (Home "Top Picks for you"). */
 @Composable
 private fun FeatureCard(thumb: String?, title: String, line: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
-    Box(Modifier.width(290.dp).height(340.dp).pressable(shape, onClick = onClick).background(LocalLo.current.surface2, shape)) {
+    val shape = RoundedCornerShape(18.dp)
+    Box(Modifier.width(300.dp).height(360.dp).pressable(shape, onClick = onClick).background(LocalLo.current.surface2, shape)) {
         AsyncImage(model = thumb, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
-                .padding(start = 14.dp, end = 14.dp, top = 40.dp, bottom = 14.dp),
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD9000000))))
+                .padding(start = 14.dp, end = 14.dp, top = 56.dp, bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(title, style = LoType.sub.copy(fontWeight = FontWeight.SemiBold), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -95,10 +109,8 @@ private fun FeatureCard(thumb: String?, title: String, line: String, onClick: ()
 
 @Composable
 fun HomeScreen() {
-    val state by load("home") { YouTube.home() }
     val player = LocalPlayer.current
     val nav = LocalNav.current
-    val lo = LocalLo.current
     val liked = likedSongs()
     val recent = liked.take(12)
     val now = playingId()
@@ -108,20 +120,13 @@ fun HomeScreen() {
     val recs by produceState<List<com.lomu.app.sync.SyncClient.RecShelf>>(emptyList(), syncState.user, syncState.status.startsWith("Up to date")) {
         value = runCatching { sync?.recs() }.getOrNull().orEmpty()
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item {
-            Row(Modifier.statusBarsPadding().padding(start = 20.dp, end = 16.dp, top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Listen Now", style = LoType.hero, color = lo.ink, modifier = Modifier.weight(1f))
-                Box(Modifier.size(34.dp).pressable(CircleShape) { nav.tab(Screen.Settings) }, Alignment.Center) {
-                    Icon(Icons.Outlined.AccountCircle, null, tint = lo.signal, modifier = Modifier.size(32.dp))
-                }
-            }
-            Box(Modifier.padding(start = 20.dp, top = 8.dp).fillMaxWidth().height(0.5.dp).background(lo.line))
-        }
+    val state by load("home") { YouTube.home() }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
+        item { TitleBar("Home") }
         val top = recs.firstOrNull()
         if (top != null) item {
             Column {
-                CaptionedTitle("Top Picks", "Made for ${syncState.user ?: "you"}")
+                CaptionedTitle("Top Picks for you", top.title)
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(top.tracks.take(10)) { m ->
                         FeatureCard(m.thumbnailUrl, m.title, m.artists.joinToString { it.name }) {
@@ -133,7 +138,7 @@ fun HomeScreen() {
         }
         if (recent.isNotEmpty()) item {
             Column {
-                CaptionedTitle("Recently Liked", null, "See All") { nav.push(Screen.Liked) }
+                SectionTitle("Recently Liked") { nav.push(Screen.Liked) }
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     itemsIndexed(recent) { i, s ->
                         MediaCard(s.song.thumbnailUrl, s.song.title, s.artists.joinToString { it.name }, now == s.song.id) {
@@ -145,7 +150,7 @@ fun HomeScreen() {
         }
         items(recs.drop(1)) { shelf ->
             Column {
-                SectionTitle(shelf.title)
+                SectionTitle(shelf.title, chevron = false)
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(shelf.tracks) { m ->
                         MediaCard(m.thumbnailUrl, m.title, m.artists.joinToString { it.name }, now == m.id) {
@@ -155,6 +160,22 @@ fun HomeScreen() {
                 }
             }
         }
+        // Until the personal shelves arrive (or when signed out) fall back to the open feed.
+        if (recs.isEmpty() && recent.isEmpty()) when (val st = state) {
+            is Load.Loading -> item { Loading() }
+            is Load.Err -> item { ErrorBox(st.message) }
+            is Load.Ok -> items(st.value.sections.take(3)) { Shelf(it.title, it.items) }
+        }
+    }
+}
+
+// ======================================================================================= New
+
+@Composable
+fun NewScreen() {
+    val state by load("home") { YouTube.home() }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
+        item { TitleBar("New") }
         when (val st = state) {
             is Load.Loading -> item { Loading() }
             is Load.Err -> item { ErrorBox(st.message) }
@@ -199,14 +220,14 @@ fun SearchScreen() {
     }
     val open = rememberOpen()
     Column(Modifier.fillMaxSize()) {
-        PageTitle("", "Search")
-        SearchField(text, { text = it; if (it.isBlank()) submitted = "" }, "Artists, Songs, Lyrics and More", { submit(text) }, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+        TitleBar("Search")
+        SearchField(text, { text = it; if (it.isBlank()) submitted = "" }, "Apple Music", { submit(text) }, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
         val summaries = when (val r0 = result) { is Load.Ok -> r0.value?.summaries.orEmpty(); else -> emptyList() }
         if (submitted.isNotBlank() && suggestions.isEmpty() && summaries.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Chips(listOf("All") + summaries.map { it.title }, filter, { filter = it })
         }
-        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(contentPadding = PaddingValues(bottom = bottomPad())) {
             if (suggestions.isNotEmpty()) {
                 items(suggestions) { q ->
                     Column(Modifier.fillMaxWidth().pressable(RoundedCornerShape(0.dp)) { submit(q) }) {
@@ -222,7 +243,7 @@ fun SearchScreen() {
                 item {
                     Column {
                         if (recent.isNotEmpty()) {
-                            SectionTitle("Recent Searches", action = "Clear") {
+                            SectionTitle("Recently Searched", action = "Clear") {
                                 recent = emptyList(); prefs.edit().remove("recent").apply()
                             }
                             recent.forEach { r ->
@@ -236,7 +257,7 @@ fun SearchScreen() {
                                 }
                             }
                         }
-                        SectionTitle("Browse Categories")
+                        SectionTitle("Browse Categories", chevron = false)
                         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             TRY_SEARCHES.withIndex().chunked(2).forEach { pair ->
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -255,7 +276,7 @@ fun SearchScreen() {
                     if (sums.isEmpty()) item { EmptyState(Ph.Search, "No Results for “$submitted”", "Check the spelling or try a new search.") }
                     val shown = if (filter == 0) sums.map { it to 5 } else listOfNotNull(sums.getOrNull(filter - 1)?.let { it to 50 })
                     shown.forEach { (sum, limit) ->
-                        item { SectionTitle(sum.title, action = if (filter == 0 && sum.items.size > limit) "See All" else null) { filter = sums.indexOf(sum) + 1 } }
+                        item { SectionTitle(sum.title, action = if (filter == 0 && sum.items.size > limit) "See All" else null, chevron = false, onAction = { filter = sums.indexOf(sum) + 1 }) }
                         items(sum.items.take(limit)) { it ->
                             if (it is SongItem) TrackRow(it) { open(it) } else ResultRow(it) { open(it) }
                         }
@@ -307,10 +328,10 @@ private fun playlistsState(): List<com.lomu.app.db.entities.Playlist> {
 private fun LibraryRow(icon: Ph, label: String, onClick: () -> Unit) {
     val lo = LocalLo.current
     Column(Modifier.fillMaxWidth().pressable(RoundedCornerShape(0.dp), onClick = onClick)) {
-        Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Ic(icon, 24.dp, lo.signal, Modifier.width(32.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(label, style = LoType.body.copy(fontSize = 20.sp, lineHeight = 25.sp), color = lo.ink, modifier = Modifier.weight(1f))
+        Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Ic(icon, 22.dp, lo.ink, Modifier.width(30.dp))
+            Spacer(Modifier.width(12.dp))
+            Text(label, style = LoType.body, color = lo.ink, modifier = Modifier.weight(1f))
             Icon(Icons.Rounded.ChevronRight, null, tint = lo.grey.copy(alpha = 0.7f), modifier = Modifier.size(22.dp))
         }
         Hairline(62.dp)
@@ -321,58 +342,59 @@ private fun LibraryRow(icon: Ph, label: String, onClick: () -> Unit) {
 fun LibraryScreen() {
     val lo = LocalLo.current
     val nav = LocalNav.current
+    val player = LocalPlayer.current
     val songs = likedSongs()
     val playlists = playlistsState()
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item {
-            Column(Modifier.statusBarsPadding()) {
-                Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp), horizontalArrangement = Arrangement.End) {
-                    Text("Import", style = LoType.body, color = lo.signal, modifier = Modifier.pressable(CircleShape) { nav.push(Screen.Import) }.padding(horizontal = 8.dp, vertical = 6.dp))
-                }
-                Text("Library", style = LoType.hero, color = lo.ink, modifier = Modifier.padding(start = 20.dp, bottom = 10.dp))
-            }
-            Hairline(20.dp)
-            LibraryRow(Ph.Playlist, "Playlists") { nav.push(Screen.Playlists) }
-            LibraryRow(Ph.Heart, "Liked Songs") { nav.push(Screen.Liked) }
-        }
-        item { Text("Recently Added", style = LoType.section, color = lo.ink, modifier = Modifier.padding(start = 20.dp, top = 22.dp, bottom = 12.dp)) }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
+        item { TitleBar("Library") }
         if (playlists.isEmpty() && songs.isEmpty()) item {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 EmptyState(Ph.Library, "Your library is empty", "Like songs from the player, or bring your library over from YouTube Music.")
-                Pill("Import from YouTube Music", { nav.push(Screen.Import) }, icon = Ph.Download)
+                Pill("Import from YouTube Music", { nav.push(Screen.Import) }, accent = true, icon = Ph.Download)
             }
         }
         item {
-            val tiles = playlists.map { Triple(it.playlist.name, "${it.songCount} songs", it.playlist.thumbnailUrl ?: it.thumbnails.firstOrNull()) to Screen.LocalPlaylist(it.playlist.id) }
-            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                tiles.take(8).chunked(2).forEach { pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        pair.forEach { (t, dest) ->
-                            Column(Modifier.weight(1f).pressable(RoundedCornerShape(8.dp)) { nav.push(dest) }) {
-                                BoxWithConstraints { Cover(t.third, maxWidth, radius = 8.dp) }
-                                Text(t.first, style = LoType.sub, color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-                                Text(t.second, style = LoType.small, color = lo.grey, maxLines = 1)
+            // Three-up grid of what was added most recently: playlists first, then liked songs.
+            val likedItems = remember(songs) { songs.map { it.toMediaItem() } }
+            val tiles = playlists.map { p -> Triple(p.playlist.name, "${p.songCount} songs", p.playlist.thumbnailUrl ?: p.thumbnails.firstOrNull()) to { nav.push(Screen.LocalPlaylist(p.playlist.id)) } } +
+                songs.take(9).mapIndexed { i, s -> Triple(s.song.title, s.artists.joinToString { it.name }, s.song.thumbnailUrl) to { player?.playMediaItems("Liked", likedItems, i); Unit } }
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                tiles.take(6).chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        row.forEach { (t, go) ->
+                            Column(Modifier.weight(1f).pressable(RoundedCornerShape(12.dp)) { go() }) {
+                                BoxWithConstraints { Cover(t.third, maxWidth, radius = 14.dp) }
+                                Text(t.first, style = LoType.small.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium), color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
                             }
                         }
-                        if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
+            Spacer(Modifier.height(6.dp))
+            Hairline(20.dp)
+            LibraryRow(Ph.Playlist, "Playlists") { nav.push(Screen.Playlists) }
+            LibraryRow(Ph.Heart, "Liked Songs") { nav.push(Screen.Liked) }
+            LibraryRow(Ph.Download, "Import from YouTube Music") { nav.push(Screen.Import) }
         }
     }
 }
 
-/** "‹ Library" accent back link above a large title, for pushed list pages. */
+/** Glass "back" capsule above a large title, for pushed list pages. */
 @Composable
 private fun BackTitle(back: String, title: String, onBack: () -> Unit) {
     val lo = LocalLo.current
     Column(Modifier.statusBarsPadding()) {
-        Row(Modifier.padding(start = 8.dp, top = 6.dp).pressable(CircleShape, onClick = onBack).padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Ic(Ph.Left, 18.dp, lo.signal)
-            Spacer(Modifier.width(4.dp))
-            Text(back, style = LoType.body, color = lo.signal)
+        Row(
+            Modifier.padding(start = 16.dp, top = 10.dp).height(38.dp).background(lo.surface2, CircleShape)
+                .pressable(CircleShape, onClick = onBack).padding(start = 10.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Ic(Ph.Left, 16.dp, lo.ink)
+            Spacer(Modifier.width(6.dp))
+            Text(back, style = LoType.sub.copy(fontWeight = FontWeight.Medium), color = lo.ink)
         }
-        Text(title, style = LoType.hero, color = lo.ink, modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp))
+        Text(title, style = LoType.hero, color = lo.ink, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 8.dp))
     }
 }
 
@@ -382,7 +404,7 @@ fun LikedScreen() {
     val player = LocalPlayer.current
     val songs = likedSongs()
     val now = playingId()
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
         item { BackTitle("Library", "Liked Songs", nav::pop) }
         if (songs.isNotEmpty()) item {
             Row(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -403,7 +425,7 @@ fun LikedScreen() {
 fun PlaylistsScreen() {
     val nav = LocalNav.current
     val playlists = playlistsState()
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
         item { BackTitle("Library", "Playlists", nav::pop) }
         if (playlists.isEmpty()) item { EmptyState(Ph.Playlist, "No Playlists", "Playlists you import or create show up here.") }
         items(playlists) { p ->
@@ -428,7 +450,7 @@ private fun Detail(
     val lo = LocalLo.current
     val nav = LocalNav.current
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
             item {
                 if (hero) {
                     Box(Modifier.fillMaxWidth().height(380.dp).background(lo.surface2)) {
@@ -445,16 +467,16 @@ private fun Detail(
                 } else {
                     Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 56.dp, start = 40.dp, end = 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         BoxWithConstraints(Modifier.fillMaxWidth(), Alignment.Center) {
-                            val side = minOf(maxWidth, 260.dp)
-                            Cover(cover, side, radius = 8.dp, modifier = Modifier.coverShadow(8.dp, 14.dp))
+                            val side = minOf(maxWidth, 270.dp)
+                            Cover(cover, side, radius = 16.dp, modifier = Modifier.coverShadow(16.dp, 16.dp))
                         }
-                        Spacer(Modifier.height(18.dp))
-                        Text(title, style = LoType.body.copy(fontWeight = FontWeight.SemiBold), color = lo.ink, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                        if (!accent.isNullOrBlank()) Text(accent, style = LoType.body, color = lo.signal, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (caption.isNotBlank()) Text(caption.uppercase(), style = LoType.caption.copy(fontSize = 11.sp), color = lo.grey, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
+                        Spacer(Modifier.height(20.dp))
+                        Text(title, style = LoType.title.copy(fontSize = 20.sp, lineHeight = 25.sp), color = lo.ink, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        if (!accent.isNullOrBlank()) Text(accent, style = LoType.body, color = lo.grey, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (caption.isNotBlank()) Text(caption, style = LoType.small.copy(fontSize = 12.sp), color = lo.grey, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 2.dp))
                     }
                 }
-                if (actions != null) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), content = actions)
+                if (actions != null) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically, content = actions)
                 else Spacer(Modifier.height(8.dp))
             }
             body()
@@ -463,10 +485,12 @@ private fun Detail(
     }
 }
 
+/** Round shuffle button beside a wide ink Play pill, the pairing used on album and playlist pages. */
 @Composable
 private fun RowScope.PlayShuffle(play: () -> Unit, shuffle: () -> Unit) {
-    Pill("Play", play, filled = false, iconV = Icons.Rounded.PlayArrow, modifier = Modifier.weight(1f))
-    Pill("Shuffle", shuffle, filled = false, iconV = Icons.Rounded.Shuffle, modifier = Modifier.weight(1f))
+    val lo = LocalLo.current
+    Box(Modifier.size(46.dp).background(lo.surface2, CircleShape).pressable(CircleShape, onClick = shuffle), Alignment.Center) { IcV(Icons.Rounded.Shuffle, 22.dp, lo.ink) }
+    Pill("Play", play, filled = true, iconV = Icons.Rounded.PlayArrow, modifier = Modifier.width(150.dp))
 }
 
 @Composable
@@ -637,8 +661,8 @@ fun SettingsScreen() {
         probe = sync?.ping(url)
         probing = false
     }
-    Column(Modifier.fillMaxSize().background(lo.grouped).verticalScroll(rememberScrollState()).padding(bottom = 32.dp)) {
-        PageTitle("", "Settings")
+    Column(Modifier.fillMaxSize().background(lo.grouped).verticalScroll(rememberScrollState()).padding(bottom = bottomPad())) {
+        BackTitle("Back", "Settings", nav::pop)
         if (st.user != null) {
             Group("Account", footer = st.error ?: st.status) {
                 Cell {

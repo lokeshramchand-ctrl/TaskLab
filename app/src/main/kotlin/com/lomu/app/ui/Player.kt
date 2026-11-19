@@ -43,6 +43,7 @@ import kotlinx.coroutines.delay
 
 private fun MediaMetadata.artistLine() = artists.joinToString(", ") { it.name }
 
+/** Floating glass capsule above the tab bar: 32dp cover, two lines of text, play / pause and skip. */
 @Composable
 fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val lo = LocalLo.current
@@ -50,23 +51,28 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val meta by pc.mediaMetadata.collectAsState()
     val playing by pc.isPlaying.collectAsState()
     val m = meta ?: return
-    Column(modifier.fillMaxWidth().background(lo.card)) {
-        Hairline()
-        Row(
-            Modifier.fillMaxWidth().pressable(RoundedCornerShape(0.dp), onClick = onOpen).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Cover(m.thumbnailUrl, 40.dp, radius = 5.dp)
-            Spacer(Modifier.width(12.dp))
-            Text(m.title, style = LoType.sub, color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            IconBtnV(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, { pc.togglePlayPause() }, size = 44.dp, iconSize = 30.dp)
-            IconBtnV(Icons.Rounded.FastForward, { pc.seekToNext() }, size = 44.dp, iconSize = 30.dp)
+    val shape = RoundedCornerShape(32.dp)
+    Row(
+        modifier.fillMaxWidth().height(52.dp).glass(shape, lo).pressable(shape, onClick = onOpen).padding(start = 10.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Cover(m.thumbnailUrl, 34.dp, radius = 8.dp)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(m.title, style = LoType.sub.copy(fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2).sp), color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(m.artistLine(), style = LoType.small.copy(fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Medium), color = lo.grey, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        IconBtnV(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, { pc.togglePlayPause() }, size = 44.dp, iconSize = 28.dp)
+        IconBtnV(Icons.Rounded.FastForward, { pc.seekToNext() }, size = 44.dp, iconSize = 28.dp)
     }
 }
 
+/** The player is always dark with white controls over the tinted artwork, in both themes. */
 @Composable
-fun FullPlayer(onClose: () -> Unit) {
+fun FullPlayer(onClose: () -> Unit) = CompositionLocalProvider(LocalLo provides DarkLo) { FullPlayerContent(onClose) }
+
+@Composable
+private fun FullPlayerContent(onClose: () -> Unit) {
     val lo = LocalLo.current
     val pc = LocalPlayer.current ?: return
     val meta by pc.mediaMetadata.collectAsState()
@@ -81,7 +87,7 @@ fun FullPlayer(onClose: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(lo.bg)) {
         // Tinted wash taken from the artwork, as in the reference player.
-        Ambient(m?.thumbnailUrl, height = 900.dp)
+        Ambient(m?.thumbnailUrl, height = 900.dp, strength = 0.78f)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
             // grabber
             Box(Modifier.fillMaxWidth().padding(top = 10.dp).pressable(RoundedCornerShape(4.dp), onClick = onClose), Alignment.Center) {
@@ -156,7 +162,7 @@ private fun Artwork(url: String?, playing: Boolean) {
     val scale by animateFloatAsState(if (playing) 1f else 0.86f, spring(dampingRatio = 0.7f, stiffness = 300f), label = "art")
     BoxWithConstraints(Modifier.fillMaxSize(), Alignment.Center) {
         val side = minOf(maxWidth, maxHeight)
-        Box(Modifier.size(side).graphicsLayer { scaleX = scale; scaleY = scale }.coverShadow(8.dp, 24.dp)) { Cover(url, side, radius = 8.dp) }
+        Box(Modifier.size(side).graphicsLayer { scaleX = scale; scaleY = scale }.coverShadow(14.dp, 24.dp)) { Cover(url, side, radius = 14.dp) }
     }
 }
 
@@ -279,7 +285,7 @@ private fun QueuePanel(pc: PlayerConnection) {
     LazyColumn(Modifier.fillMaxSize(), state = listState) {
         itemsIndexed(windows) { i, w ->
             val md = w.mediaItem.mediaMetadata
-            MediaRow(md.title?.toString().orEmpty(), md.artist?.toString().orEmpty(), md.artworkUri?.toString(), active = i == index) { pc.player.seekToDefaultPosition(i) }
+            MediaRow(md.title?.toString().orEmpty(), md.artist?.toString().orEmpty(), md.artworkUri?.toString(), active = i == index, pad = 0.dp) { pc.player.seekToDefaultPosition(i) }
         }
     }
 }
