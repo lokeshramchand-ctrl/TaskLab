@@ -35,6 +35,7 @@ export function parseTakeoutFile(fileName: string, text: string): TakeoutList | 
   if (rows.length < 2) return null;
   const head = rows[0].map((h) => h.trim().toLowerCase());
   const col = (re: RegExp) => head.findIndex((h) => re.test(h));
+  if (col(/^playlist id$/) >= 0) return null; // the playlist index, not a list of songs
   const idCol = col(/^video id$/);
   const titleCol = col(/^song title$|^title$/);
   const artistCol = col(/^artist name 1$|^artist$/);

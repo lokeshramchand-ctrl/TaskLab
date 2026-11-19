@@ -12,48 +12,58 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/** LoMu design tokens. Same palette as the web player (globals.css): flat paper surfaces, hairlines, one blue signal. */
+/**
+ * LoMu design tokens, modelled on Apple Music: pure white / true black canvas, iOS system greys,
+ * hairline separators, grouped inset cells and one red accent.
+ */
 data class Lo(
-    val bg: Color,
-    val card: Color,      // surface
-    val surface2: Color,
-    val ink: Color,
-    val grey: Color,      // muted text
-    val line: Color,      // hairline border
-    val border2: Color,   // stronger border (inputs, buttons)
-    val signal: Color,
-    val signalSoft: Color,
-    val red: Color,
+    val bg: Color,          // page canvas
+    val card: Color,        // elevated surface (bars, mini player, sheets)
+    val surface2: Color,    // fills: search field, art placeholder, segmented track
+    val grouped: Color,     // background of grouped (Settings style) pages
+    val cell: Color,        // grouped cell background
+    val ink: Color,         // primary label
+    val grey: Color,        // secondary label
+    val line: Color,        // hairline separator
+    val border2: Color,     // stronger outline
+    val signal: Color,      // accent (Apple Music red)
+    val signalSoft: Color,  // accent tint for fills
+    val red: Color,         // destructive / error
     val dark: Boolean,
 )
 
 val LightLo = Lo(
-    bg = Color(0xFFF7F7F6), card = Color(0xFFFFFFFF), surface2 = Color(0xFFF1F1F0),
-    ink = Color(0xFF17181A), grey = Color(0xFF6F6E68), line = Color(0xFFE7E6E2), border2 = Color(0xFFD3D2CC),
-    signal = Color(0xFF2231DD), signalSoft = Color(0x172231DD), red = Color(0xFFED272E), dark = false,
+    bg = Color(0xFFFFFFFF), card = Color(0xFFFAFAFA), surface2 = Color(0xFFEEEEF0),
+    grouped = Color(0xFFF2F2F7), cell = Color(0xFFFFFFFF),
+    ink = Color(0xFF000000), grey = Color(0xFF8E8E93), line = Color(0xFFC6C6C8), border2 = Color(0xFFC6C6C8),
+    signal = Color(0xFFFF2D55), signalSoft = Color(0x1FFF2D55), red = Color(0xFFFF3B30), dark = false,
 )
 val DarkLo = Lo(
-    bg = Color(0xFF0E0F11), card = Color(0xFF17181A), surface2 = Color(0xFF1D1E21),
-    ink = Color(0xFFF4F3F1), grey = Color(0xFF9A9993), line = Color(0xFF26272A), border2 = Color(0xFF3A3B3F),
-    signal = Color(0xFF6B78FF), signalSoft = Color(0x296B78FF), red = Color(0xFFFF5158), dark = true,
+    bg = Color(0xFF000000), card = Color(0xFF222222), surface2 = Color(0xFF2C2C2E),
+    grouped = Color(0xFF000000), cell = Color(0xFF1C1C1E),
+    ink = Color(0xFFFFFFFF), grey = Color(0xFF9A9AA0), line = Color(0xFF38383A), border2 = Color(0xFF444446),
+    signal = Color(0xFFFF375F), signalSoft = Color(0x2EFF375F), red = Color(0xFFFF453A), dark = true,
 )
 
 val LocalLo = staticCompositionLocalOf { LightLo }
 
+/** Type scale after the iOS text styles: Large Title, Title 2, Headline, Body, Subhead, Footnote. */
 object LoType {
-    val hero = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 34.sp, lineHeight = 38.sp, letterSpacing = (-1.2).sp)
-    val title = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 26.sp, letterSpacing = (-0.6).sp)
-    val section = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 17.sp, letterSpacing = (-0.3).sp)
-    val body = TextStyle(fontWeight = FontWeight.Medium, fontSize = 15.sp, letterSpacing = (-0.2).sp)
-    val small = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.5.sp, letterSpacing = (-0.1).sp)
-    val eyebrow = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 11.sp, letterSpacing = 0.9.sp)
+    val hero = TextStyle(fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 41.sp, letterSpacing = 0.37.sp)       // Large Title
+    val title = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = 0.35.sp)       // Title 2
+    val section = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = 0.35.sp)
+    val body = TextStyle(fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = (-0.41).sp)  // Body
+    val small = TextStyle(fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 16.sp, letterSpacing = (-0.08).sp) // Footnote
+    val eyebrow = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 16.sp, letterSpacing = (-0.08).sp)
+    val sub = TextStyle(fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp, letterSpacing = (-0.24).sp)    // Subheadline
+    val caption = TextStyle(fontWeight = FontWeight.Medium, fontSize = 10.sp, lineHeight = 12.sp, letterSpacing = 0.07.sp)   // Caption 3 (tab labels)
 }
 
 @Composable
 fun LoMuTheme(content: @Composable () -> Unit) {
     val lo = if (isSystemInDarkTheme()) DarkLo else LightLo
-    val scheme = if (lo.dark) darkColorScheme(background = lo.bg, surface = lo.card, primary = lo.ink, onPrimary = lo.bg, onBackground = lo.ink, onSurface = lo.ink)
-    else lightColorScheme(background = lo.bg, surface = lo.card, primary = lo.ink, onPrimary = lo.bg, onBackground = lo.ink, onSurface = lo.ink)
+    val scheme = if (lo.dark) darkColorScheme(background = lo.bg, surface = lo.card, primary = lo.signal, onPrimary = Color.White, onBackground = lo.ink, onSurface = lo.ink)
+    else lightColorScheme(background = lo.bg, surface = lo.card, primary = lo.signal, onPrimary = Color.White, onBackground = lo.ink, onSurface = lo.ink)
     MaterialTheme(colorScheme = scheme) {
         CompositionLocalProvider(LocalLo provides lo, content = content)
     }

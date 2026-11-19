@@ -12,6 +12,8 @@ sealed interface Screen {
     data class Playlist(val id: String) : Screen
     data class LocalPlaylist(val id: String) : Screen
     data object Import : Screen
+    data object Liked : Screen
+    data object Playlists : Screen
 }
 
 /** Tiny back stack: the bottom entry is the current tab, the rest are pushed detail pages. */

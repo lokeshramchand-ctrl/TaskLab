@@ -42,6 +42,9 @@ class YtmImporter @Inject constructor(private val database: MusicDatabase) {
                     songTotal += songs.size
                     savePlaylist(p, songs)
                 }
+                if (songTotal == 0 && lists.isEmpty()) {
+                    error("Nothing was found in this account. Check that you signed in to the right Google account and that it has liked songs or playlists on YouTube Music.")
+                }
                 ImportSummary(liked.size, lists.size, songTotal)
             }
         } finally {

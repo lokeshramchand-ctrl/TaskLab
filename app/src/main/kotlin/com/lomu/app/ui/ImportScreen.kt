@@ -10,6 +10,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
 import com.lomu.app.sync.ImportSummary
 import com.lomu.app.sync.YtmImporter
@@ -45,13 +50,14 @@ fun ImportScreen() {
     var web by remember { mutableStateOf<WebView?>(null) }
     DisposableEffect(Unit) { onDispose { forgetSession(web); web?.destroy() } }
 
-    Column(Modifier.fillMaxSize()) {
-        TopBar("Import from YouTube Music", nav::pop)
+    Column(Modifier.fillMaxSize().background(lo.bg)) {
+        TopBar("", nav::pop)
         when (phase) {
             "login" -> {
+                Text("Import from YouTube Music", style = LoType.title, color = lo.ink, modifier = Modifier.padding(horizontal = 20.dp))
                 Text(
                     "Sign in to Google below. LoMu copies your liked songs and playlists once and then forgets the session; your password is never seen by the app.",
-                    style = LoType.small, color = lo.grey, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    style = LoType.sub, color = lo.grey, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
@@ -71,8 +77,9 @@ fun ImportScreen() {
                                     scope.launch {
                                         val result = importer?.import(cookie) { message = it }
                                         forgetSession(view)
-                                        result?.onSuccess { summary = it; phase = "done" }
-                                            ?.onFailure { message = it.message ?: "Import failed"; phase = "failed" }
+                                        if (result == null) { message = "Import is not available right now."; phase = "failed" }
+                                        else result.onSuccess { summary = it; phase = "done" }
+                                            .onFailure { message = it.message ?: "Import failed"; phase = "failed" }
                                     }
                                 }
                             }
@@ -82,20 +89,30 @@ fun ImportScreen() {
                     },
                 )
             }
-            "working" -> Column(Modifier.fillMaxWidth().padding(24.dp)) {
+            "working" -> Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Loading()
-                Text(message, style = LoType.body, color = lo.ink)
+                Text("Importing", style = LoType.title, color = lo.ink)
+                Text(message, style = LoType.sub, color = lo.grey, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
             }
-            "done" -> Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            "done" -> Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val s = summary
-                Text("Done", style = LoType.hero, color = lo.ink)
-                Text("${s?.likedSongs ?: 0} liked songs and ${s?.playlists ?: 0} playlists are now in LoMu. The Google session has been cleared.", style = LoType.body, color = lo.grey)
-                Pill("Back to library", { nav.tab(Screen.Library) })
+                Spacer(Modifier.height(32.dp))
+                IcV(androidx.compose.material.icons.Icons.Rounded.CheckCircle, 72.dp, lo.signal)
+                Text("Import Complete", style = LoType.hero.copy(fontSize = 28.sp, lineHeight = 34.sp), color = lo.ink)
+                Text(
+                    "${s?.likedSongs ?: 0} liked songs and ${s?.playlists ?: 0} playlists (${s?.songs ?: 0} songs in total) are now in LoMu. The Google session has been cleared.",
+                    style = LoType.sub, color = lo.grey, textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(12.dp))
+                Pill("Go to Library", { nav.tab(Screen.Library) }, modifier = Modifier.fillMaxWidth())
             }
-            else -> Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Import failed", style = LoType.title, color = lo.ink)
-                Text(message, style = LoType.body, color = lo.grey)
-                Pill("Try again", { phase = "login" })
+            else -> Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Spacer(Modifier.height(32.dp))
+                Ic(Ph.Warn, 64.dp, lo.red)
+                Text("Import Failed", style = LoType.hero.copy(fontSize = 28.sp, lineHeight = 34.sp), color = lo.ink)
+                Text(message, style = LoType.sub, color = lo.grey, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(12.dp))
+                Pill("Try Again", { phase = "login" }, modifier = Modifier.fillMaxWidth())
             }
         }
     }

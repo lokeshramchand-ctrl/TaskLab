@@ -21,31 +21,47 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Search
 
 @Composable
 fun Welcome(onStart: () -> Unit) {
     val lo = LocalLo.current
-    Column(Modifier.fillMaxSize().background(lo.bg).statusBarsPadding().navigationBarsPadding().padding(28.dp)) {
+    Column(Modifier.fillMaxSize().background(lo.bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 28.dp, vertical = 24.dp)) {
         Spacer(Modifier.weight(1f))
-        Box(Modifier.size(68.dp).background(lo.ink, RoundedCornerShape(20.dp)), Alignment.Center) { Ic(Ph.Waveform, 34.dp, lo.bg) }
+        Box(Modifier.size(72.dp).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFFFF5E7A), lo.signal)), RoundedCornerShape(17.dp)), Alignment.Center) {
+            IcV(androidx.compose.material.icons.Icons.Rounded.MusicNote, 40.dp, Color.White)
+        }
         Spacer(Modifier.height(24.dp))
-        Text("LoMu", style = LoType.hero.copy(fontSize = 56.sp, lineHeight = 58.sp, letterSpacing = (-2).sp), color = lo.ink)
-        Text("Your music, everywhere.", style = LoType.title, color = lo.grey)
+        Text("Welcome to LoMu", style = LoType.hero, color = lo.ink)
+        Text("Your music, everywhere.", style = LoType.body.copy(fontSize = 20.sp, lineHeight = 25.sp), color = lo.grey, modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(32.dp))
         listOf(
-            Ph.Headphones to "Plays anonymously from YouTube Music. No ads, no Google account.",
-            Ph.Cloud to "Syncs your likes and playlists to your own server.",
-            Ph.Sparkles to "Mixes, radio and lyrics that learn what you like.",
+            Ph.Headphones to ("Listen anonymously" to "Plays from YouTube Music. No ads, no Google account."),
+            Ph.Cloud to ("Synced to you" to "Likes and playlists sync to your own server."),
+            Ph.Sparkles to ("Made for you" to "Mixes, radio and lyrics that learn what you like."),
         ).forEach { (icon, text) ->
-            Row(Modifier.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(40.dp).background(lo.surface2, RoundedCornerShape(12.dp)).border(1.dp, lo.line, RoundedCornerShape(12.dp)), Alignment.Center) { Ic(icon, 20.dp) }
-                Spacer(Modifier.width(14.dp))
-                Text(text, style = LoType.body, color = lo.ink, modifier = Modifier.weight(1f))
+            Row(Modifier.padding(vertical = 10.dp), verticalAlignment = Alignment.Top) {
+                Ic(icon, 30.dp, lo.signal, Modifier.padding(top = 2.dp))
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(text.first, style = LoType.body.copy(fontWeight = FontWeight.SemiBold), color = lo.ink)
+                    Text(text.second, style = LoType.sub, color = lo.grey)
+                }
             }
         }
         Spacer(Modifier.weight(1f))
-        Pill("Get started", onStart, icon = Ph.Right, modifier = Modifier.fillMaxWidth().height(52.dp))
-        Spacer(Modifier.height(8.dp))
+        Pill("Continue", onStart, modifier = Modifier.fillMaxWidth().height(52.dp))
     }
 }
 
@@ -84,6 +100,8 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
                             is Screen.Playlist -> PlaylistScreen(screen.id)
                             is Screen.LocalPlaylist -> LocalPlaylistScreen(screen.id)
                             Screen.Import -> ImportScreen()
+                            Screen.Liked -> LikedScreen()
+                            Screen.Playlists -> PlaylistsScreen()
                         }
                     }
                 }
@@ -99,30 +117,29 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
     }
 }
 
-private data class TabDef(val label: String, val icon: Ph, val screen: Screen)
+private data class TabDef(val label: String, val on: ImageVector, val off: ImageVector, val screen: Screen)
 
 @Composable
 private fun TabBar(nav: Nav) {
     val lo = LocalLo.current
     val tabs = listOf(
-        TabDef("Home", Ph.Home, Screen.Home),
-        TabDef("Search", Ph.Search, Screen.Search),
-        TabDef("Library", Ph.Library, Screen.Library),
-        TabDef("Settings", Ph.Settings, Screen.Settings),
+        TabDef("Listen Now", Icons.Filled.PlayCircle, Icons.Outlined.PlayCircle, Screen.Home),
+        TabDef("Search", Icons.Rounded.Search, Icons.Rounded.Search, Screen.Search),
+        TabDef("Library", Icons.Filled.LibraryMusic, Icons.Outlined.LibraryMusic, Screen.Library),
+        TabDef("Settings", Icons.Filled.Settings, Icons.Outlined.Settings, Screen.Settings),
     )
     Column(Modifier.fillMaxWidth().background(lo.card)) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(lo.line))
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+        Hairline()
+        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 6.dp, bottom = 4.dp)) {
             tabs.forEach { t ->
                 val active = nav.stack.first() == t.screen
+                val tint = if (active) lo.signal else lo.grey
                 Column(
-                    Modifier.weight(1f).pressable(RoundedCornerShape(16.dp)) { nav.tab(t.screen) }.padding(vertical = 4.dp),
+                    Modifier.weight(1f).pressable(RoundedCornerShape(8.dp)) { nav.tab(t.screen) }.padding(vertical = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Box(Modifier.height(30.dp).width(58.dp).clip(CircleShape).background(if (active) lo.signalSoft else androidx.compose.ui.graphics.Color.Transparent), Alignment.Center) {
-                        Ic(t.icon, 22.dp, if (active) lo.signal else lo.grey)
-                    }
-                    Text(t.label, style = LoType.small.copy(fontSize = 11.sp), color = if (active) lo.signal else lo.grey)
+                    IcV(if (active) t.on else t.off, 26.dp, tint)
+                    Text(t.label, style = LoType.caption, color = tint, modifier = Modifier.padding(top = 2.dp))
                 }
             }
         }
