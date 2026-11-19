@@ -68,16 +68,24 @@ class ConnectClient @Inject constructor(
     private val localPlaying = MutableStateFlow(false)
 
     /**
-     * The device this phone is steering right now: the one picked in the device list, or, when
-     * nothing plays here, another device that is playing (so the phone shows it as a remote).
+     * The device this phone is steering. It is chosen in the device list, or latched automatically when
+     * another device starts playing while nothing plays here. Once set it stays (also while that device
+     * is paused) until you pick "This phone", play here, or the device goes offline.
      */
-    val remote: StateFlow<Dev?> = combine(_devices, _target, localPlaying) { d, t, local ->
-        if (t != null) d.list.find { it.id == t }
-        else if (local) null
-        else d.list.firstOrNull { it.id != selfId && it.playing }
-    }.stateIn(scope, SharingStarted.Eagerly, null)
+    val remote: StateFlow<Dev?> = combine(_devices, _target) { d, t -> t?.let { id -> d.list.find { it.id == id } } }
+        .stateIn(scope, SharingStarted.Eagerly, null)
 
-    init { instance = this }
+    private var suppressLatchUntil = 0L
+
+    private fun latch(d: DevicesState) {
+        if (_target.value != null || localPlaying.value || System.currentTimeMillis() < suppressLatchUntil) return
+        d.list.firstOrNull { it.id != selfId && it.playing }?.let { _target.value = it.id }
+    }
+
+    init {
+        instance = this
+        scope.launch { _devices.collect { latch(it) } }
+    }
 
     companion object {
         /** Lets the plain `playList` / `playRadio` helpers route to a remote device without a context. */
@@ -125,6 +133,7 @@ class ConnectClient @Inject constructor(
 
     fun stop() {
         job?.cancel(); job = null
+        _target.value = null
         _devices.value = DevicesState()
     }
 
@@ -281,6 +290,7 @@ class ConnectClient @Inject constructor(
         val active = d.active?.takeIf { a -> d.list.any { it.id == a } }
         if (id == selfId) {
             _target.value = null
+            suppressLatchUntil = System.currentTimeMillis() + 6000
             if (active != null && active != selfId) send(active, JSONObject().put("type", "handoff").put("to", selfId))
             return
         }

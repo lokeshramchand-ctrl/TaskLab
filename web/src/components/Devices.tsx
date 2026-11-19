@@ -1,8 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { useConnect, transferTo, sendCommand, startConnect, stopConnect, type Device } from '@/player/connect';
-import { artistNames } from '@/lib/format';
-import { Cover } from './Art';
+import { useConnect, transferTo, startConnect, stopConnect, type Device } from '@/player/connect';
 import { Icon } from './Icon';
 
 /** Keeps this tab registered as a device for as long as the owner is signed in. */
@@ -19,10 +17,10 @@ const glyph = (d: Device) => (d.kind === 'android' ? 'phone' : 'laptop');
 /** Button + popover listing the devices on this account; picking one moves playback there. */
 export function DevicesButton({ className = 'icon-btn', down = false }: { className?: string; down?: boolean }) {
   const [open, setOpen] = useState(false);
-  const { devices, active, self, online } = useConnect();
+  const { devices, active, self, online, target } = useConnect();
   const ref = useRef<HTMLDivElement>(null);
   const others = devices.filter((d) => d.id !== self);
-  const remote = devices.find((d) => d.id === active && d.id !== self);
+  const remote = devices.find((d) => d.id === target);
 
   useEffect(() => {
     if (!open) return;
@@ -33,27 +31,15 @@ export function DevicesButton({ className = 'icon-btn', down = false }: { classN
 
   return (
     <div ref={ref} className={`wrap${down ? ' down' : ''}`}>
-      <button className={`${className}${remote?.playing ? ' on' : ''}`} aria-label="Devices" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+      <button className={`${className}${remote ? ' on' : ''}`} aria-label="Devices" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <Icon name="devices" size={18} />
       </button>
       {open && (
         <div className="pop" role="dialog" aria-label="Connect to a device">
           <h4>Connect to a device</h4>
           {!online && <p className="hint">Offline. Reconnecting…</p>}
-          {remote?.track && (
-            <div className="now">
-              <Cover src={remote.track.thumb} size={44} radius={8} />
-              <div className="grow">
-                <div className="t clamp1">{remote.track.title}</div>
-                <div className="s clamp1">{artistNames(remote.track.artists)}</div>
-              </div>
-              <button className="icon-btn sm" aria-label="Previous" onClick={() => sendCommand(remote.id, { type: 'prev' })}><Icon name="prev" size={15} /></button>
-              <button className="icon-btn sm" aria-label={remote.playing ? 'Pause' : 'Play'} onClick={() => sendCommand(remote.id, { type: 'toggle' })}><Icon name={remote.playing ? 'pause' : 'play'} size={15} /></button>
-              <button className="icon-btn sm" aria-label="Next" onClick={() => sendCommand(remote.id, { type: 'next' })}><Icon name="next" size={15} /></button>
-            </div>
-          )}
           {devices.map((d) => (
-            <button key={d.id} className={`dev${d.id === active || (!active && d.id === self) ? ' act' : ''}`} onClick={() => (transferTo(d.id), setOpen(false))}>
+            <button key={d.id} className={`dev${d.id === (target ?? self) ? ' act' : ''}`} onClick={() => (transferTo(d.id), setOpen(false))}>
               <Icon name={glyph(d)} size={20} />
               <span className="grow">
                 <span className="n">{d.id === self ? 'This device' : d.name}</span>
@@ -74,8 +60,7 @@ export function DevicesButton({ className = 'icon-btn', down = false }: { classN
         .wrap.down .pop { bottom: auto; top: calc(100% + 10px); }
         h4 { font-size: 15px; font-weight: 700; letter-spacing: -.02em; padding: 6px 8px 8px; }
         .hint { color: var(--muted); font-size: 12.5px; padding: 6px 8px 8px; }
-        .now { display: flex; align-items: center; gap: 8px; padding: 6px 8px 10px; border-bottom: .5px solid var(--border); margin-bottom: 6px; }
-        .t { font-weight: 600; font-size: 13.5px; } .s { color: var(--muted); font-size: 12px; }
+        .s { color: var(--muted); font-size: 12px; }
         .dev { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 8px; border-radius: 12px; }
         .dev:hover { background: var(--surface-2); }
         .dev.act { color: var(--signal); }

@@ -1,6 +1,6 @@
 'use client';
 import { create } from 'zustand';
-import { usePlayer, currentTrack } from './store';
+import { usePlayer, currentTrack, remoteRoute } from './store';
 import type { Track } from '@/lib/types';
 import { toast } from '@/components/Toast';
 
@@ -28,9 +28,24 @@ type ConnectState = {
   active: string | null;
   receivedAt: number; // local clock when `devices` last arrived (to extrapolate progress)
   online: boolean;
+  /** The device this tab is steering (null = this tab plays). Sticky until changed, also while that device is paused. */
+  target: string | null;
 };
 
-export const useConnect = create<ConnectState>(() => ({ self: '', devices: [], active: null, receivedAt: 0, online: false }));
+export const useConnect = create<ConnectState>(() => ({ self: '', devices: [], active: null, receivedAt: 0, online: false, target: null }));
+
+/** The device being steered, if any. */
+export const remoteDevice = (s: Pick<ConnectState, 'devices' | 'target'>): Device | null => (s.target ? s.devices.find((d) => d.id === s.target) ?? null : null);
+
+let suppressLatchUntil = 0;
+let executing = false; // true while running a command that was meant for this tab
+
+function latch() {
+  const s = useConnect.getState();
+  if (s.target || usePlayer.getState().playing || Date.now() < suppressLatchUntil) return;
+  const other = s.devices.find((d) => d.id !== s.self && d.playing);
+  if (other) useConnect.setState({ target: other.id });
+}
 
 function deviceId(): string {
   try {
@@ -79,15 +94,55 @@ function handoffTo(to: string) {
 
 /** Spotify-style "play on this device": move playback from wherever it is to `id`. */
 export function transferTo(id: string) {
-  const { self, active } = useConnect.getState();
-  if (id === active) return;
+  const { self, active, target } = useConnect.getState();
+  if (id === self) {
+    suppressLatchUntil = Date.now() + 6000;
+    useConnect.setState({ target: null });
+    const source = target ?? active;
+    if (source && source !== self) sendCommand(source, { type: 'handoff', to: self });
+    return;
+  }
+  // Steer `id` from here; if music plays somewhere else (here or on another device), move it over first.
+  useConnect.setState({ target: id });
   const source = active ?? self;
   if (source === id) return;
-  if (source === self) handoffTo(id);
-  else sendCommand(source, { type: 'handoff', to: id });
+  if (source === self) {
+    if (usePlayer.getState().queue.length) handoffTo(id);
+  } else sendCommand(source, { type: 'handoff', to: id });
 }
 
+// Song lists, the queue buttons and radio all call the store; while steering another device they go there.
+const remoteId = () => (executing ? null : useConnect.getState().target);
+remoteRoute.play = (tracks, start) => {
+  const to = remoteId();
+  if (!to) return false;
+  const from = Math.max(0, start - 3);
+  sendCommand(to, { type: 'load', tracks: tracks.slice(from, from + 300), index: start - from, position: 0, play: true });
+  return true;
+};
+remoteRoute.radio = (track) => {
+  const to = remoteId();
+  if (!to) return false;
+  sendCommand(to, { type: 'radio', track });
+  return true;
+};
+remoteRoute.enqueue = (tracks) => {
+  const to = remoteId();
+  if (!to) return false;
+  sendCommand(to, { type: 'enqueue', tracks });
+  return true;
+};
+
 function run(cmd: Record<string, any>, from: string) {
+  executing = true;
+  try {
+    exec(cmd, from);
+  } finally {
+    executing = false;
+  }
+}
+
+function exec(cmd: Record<string, any>, from: string) {
   const P = usePlayer.getState();
   switch (cmd.type) {
     case 'play':
@@ -121,12 +176,14 @@ function run(cmd: Record<string, any>, from: string) {
     case 'load': {
       const tracks = Array.isArray(cmd.tracks) ? (cmd.tracks as Track[]).filter((t) => t && typeof t.id === 'string') : [];
       if (!tracks.length) break;
+      useConnect.setState({ target: null }); // music plays here now
       P.play(tracks, Number(cmd.index) || 0, { source: 'remote' });
       if (Number(cmd.position) > 1) usePlayer.getState().seek(Number(cmd.position));
       if (cmd.play === false) setTimeout(() => usePlayer.getState().playing && usePlayer.getState().toggle(), 50);
       break;
     }
     case 'radio':
+      useConnect.setState({ target: null });
       if (cmd.track?.id) P.playRadio(cmd.track as Track);
       break;
     case 'enqueue':
@@ -148,6 +205,7 @@ let debounce: ReturnType<typeof setTimeout> | null = null;
 let retry: ReturnType<typeof setTimeout> | null = null;
 let running = false;
 let lastKey = '';
+let wasPlaying = false;
 let lastPos = { at: 0, pos: 0 };
 
 function stateBody() {
@@ -175,6 +233,9 @@ function report() {
 
 function onPlayerChange() {
   const s = usePlayer.getState();
+  // Starting to play here (not merely still playing) ends steering of another device.
+  if (s.playing && !wasPlaying && useConnect.getState().target) useConnect.setState({ target: null });
+  wasPlaying = s.playing;
   const t = currentTrack(s);
   const key = [t?.id, s.playing, s.shuffle, s.repeat, s.volume, s.muted, s.queue.length].join('|');
   // A jump in position that playback alone cannot explain is a seek: tell the others.
@@ -201,7 +262,9 @@ export function startConnect() {
     };
     events.addEventListener('devices', (e) => {
       const d = JSON.parse((e as MessageEvent).data) as { devices: Device[]; active: string | null };
-      useConnect.setState({ devices: d.devices, active: d.active, receivedAt: Date.now() });
+      const t = useConnect.getState().target;
+      useConnect.setState({ devices: d.devices, active: d.active, receivedAt: Date.now(), ...(t && !d.devices.some((x) => x.id === t) ? { target: null } : {}) });
+      latch();
     });
     events.addEventListener('command', (e) => {
       const { from, cmd } = JSON.parse((e as MessageEvent).data) as { from: string; cmd: Record<string, unknown> };
@@ -229,5 +292,5 @@ export function stopConnect() {
   if (beat) clearInterval(beat);
   if (debounce) clearTimeout(debounce);
   if (retry) clearTimeout(retry);
-  useConnect.setState({ devices: [], active: null, online: false });
+  useConnect.setState({ devices: [], active: null, online: false, target: null });
 }
