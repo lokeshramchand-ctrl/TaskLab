@@ -7,6 +7,7 @@ import { FullPlayer } from './FullPlayer';
 import { TrackMenuHost } from './Menu';
 import { ToastHost } from './Toast';
 import { AuthGate } from './AuthGate';
+import { ConnectHost } from './Devices';
 import { useSettings } from '@/player/settings';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <PlayerBar />
           <MobileTabs />
         </div>
+        <ConnectHost />
         <FullPlayer />
         <TrackMenuHost />
         <ToastHost />

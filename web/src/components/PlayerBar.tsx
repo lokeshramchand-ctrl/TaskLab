@@ -5,6 +5,7 @@ import { useLibrary } from '@/player/library';
 import { artistNames, fmtTime } from '@/lib/format';
 import { Cover } from './Art';
 import { Icon } from './Icon';
+import { DevicesButton } from './Devices';
 
 export function Seek({ compact = false }: { compact?: boolean }) {
   const position = usePlayer((s) => s.position);
@@ -103,6 +104,7 @@ export function PlayerBar() {
         </div>
       </div>
       <div className="right hide-sm">
+        <DevicesButton />
         <button className="icon-btn" aria-label="Lyrics" onClick={() => (P.setExpanded(true), usePlayer.setState({ panel: 'lyrics' }))}>
           <Icon name="lyrics" size={18} />
         </button>
@@ -125,7 +127,7 @@ export function PlayerBar() {
         .play:hover { background: var(--surface-2); }
         .play:active { transform: scale(.93); }
         .seekrow { width: min(560px, 100%); }
-        .right { display: flex; gap: 2px; width: 120px; justify-content: flex-end; }
+        .right { display: flex; gap: 2px; width: 160px; justify-content: flex-end; }
         .mobile-progress { display: none; }
         @media (max-width: 900px) {
           .bar { left: 14px; right: 14px; bottom: calc(78px + env(safe-area-inset-bottom)); height: 54px; border: .5px solid var(--border); border-radius: 32px; background: color-mix(in srgb, var(--bg) 95%, transparent); box-shadow: var(--lift-hi); padding: 0 6px 0 9px; gap: 4px; }

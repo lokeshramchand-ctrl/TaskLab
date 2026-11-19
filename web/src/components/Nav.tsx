@@ -1,4 +1,5 @@
 'use client';
+import { DevicesButton } from './Devices';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -190,6 +191,7 @@ export function Topbar() {
         <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search songs, artists, albums" aria-label="Search" />
         <kbd>/</kbd>
       </form>
+      <DevicesButton down />
       <style jsx>{`
         .top { position: sticky; top: 0; z-index: 30; height: var(--top-h); display: flex; align-items: center; gap: 16px; padding: 0 var(--gutter); background: var(--glass); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); border-bottom: .5px solid var(--border); }
         .mobile-brand { display: none; }
