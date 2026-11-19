@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.lomu.app.constants.PlaylistSortType
+import com.lomu.app.constants.StopMusicOnTaskClearKey
+import com.lomu.app.utils.rememberPreference
 import com.lomu.app.constants.SongSortType
 import com.lomu.app.db.entities.Song
 import com.lomu.app.extensions.toMediaItem
@@ -699,6 +701,25 @@ fun SettingsScreen() {
                 Spacer(Modifier.width(14.dp))
                 Text("Import from YouTube Music", style = LoType.body, color = lo.ink, modifier = Modifier.weight(1f))
                 Icon(Icons.Rounded.ChevronRight, null, tint = lo.grey.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+            }
+        }
+        var stopOnClose by rememberPreference(StopMusicOnTaskClearKey, false)
+        Group(
+            "Playback",
+            footer = if (stopOnClose) "Music stops when you swipe LoMu away from your recent apps."
+            else "Music keeps playing, with controls in the notification, after you swipe LoMu away from your recent apps.",
+        ) {
+            Cell {
+                IconTile(Ph.Headphones, Color(0xFFFF9500))
+                Spacer(Modifier.width(14.dp))
+                Text("Stop when app is closed", style = LoType.body, color = lo.ink, modifier = Modifier.weight(1f))
+                androidx.compose.material3.Switch(
+                    checked = stopOnClose, onCheckedChange = { stopOnClose = it },
+                    colors = androidx.compose.material3.SwitchDefaults.colors(
+                        checkedTrackColor = Color(0xFF34C759), checkedThumbColor = Color.White, checkedBorderColor = Color.Transparent,
+                        uncheckedTrackColor = lo.surface2, uncheckedThumbColor = Color.White, uncheckedBorderColor = Color.Transparent,
+                    ),
+                )
             }
         }
         Group("About") {

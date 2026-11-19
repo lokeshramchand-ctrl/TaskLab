@@ -77,11 +77,26 @@ private fun sfFamily(display: Boolean): FontFamily? {
     return if (cuts.isEmpty()) null else FontFamily(cuts)
 }
 
-/** Body / label family: SF Pro Text, else Inter. */
-val LoFont: FontFamily by lazy { sfFamily(false) ?: InterFamily }
+/**
+ * Which typeface the app uses. The first Apple Music design shipped with the phone's own system font (Roboto),
+ * and that is what stays the default. Set to [AppFont.SfPro] to switch to SF Pro (needs the files in assets/fonts,
+ * falls back to Inter without them) or [AppFont.Inter].
+ */
+enum class AppFont { System, SfPro, Inter }
+const val APP_FONT_CHOICE = 0 // 0 = System, 1 = SF Pro, 2 = Inter
+private val appFont get() = AppFont.entries[APP_FONT_CHOICE]
 
-/** Title family (Large Title, Title 2): SF Pro Display, else the same fallback. */
-val LoDisplay: FontFamily by lazy { sfFamily(true) ?: LoFont }
+/** Body / label family. */
+val LoFont: FontFamily by lazy {
+    when (appFont) {
+        AppFont.System -> FontFamily.Default
+        AppFont.SfPro -> sfFamily(false) ?: InterFamily
+        AppFont.Inter -> InterFamily
+    }
+}
+
+/** Title family (Large Title, Title 2): SF Pro Display when SF Pro is chosen, otherwise the same as the body. */
+val LoDisplay: FontFamily by lazy { if (appFont == AppFont.SfPro) sfFamily(true) ?: LoFont else LoFont }
 
 /** Type scale after the iOS text styles: Large Title, Title 2, Headline, Body, Subhead, Footnote. */
 object LoType {
