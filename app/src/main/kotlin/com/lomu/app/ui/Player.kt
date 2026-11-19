@@ -134,7 +134,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                     if (m != null) {
                         Spacer(Modifier.width(10.dp))
                         Box(Modifier.size(32.dp).background(sub.copy(alpha = 0.25f), CircleShape).pressable(CircleShape) { openMenu(MenuTarget(m)) }, Alignment.Center) {
-                            IcV(Icons.Rounded.MoreHoriz, 18.dp, lo.ink)
+                            Ic(Ph.More, 18.dp, lo.ink)
                         }
                     }
                 }
@@ -220,6 +220,30 @@ private fun SeekBar(pc: PlayerConnection) {
     }
 }
 
+/** The phone's media volume (0..1), kept current while the hardware buttons or the system slider change it. */
+@Composable
+fun rememberSystemVolume(audio: AudioManager, max: Int): State<Float> {
+    val ctx = LocalContext.current
+    val vol = remember { mutableStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()) }
+    DisposableEffect(ctx) {
+        val read = { vol.value = audio.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat() }
+        read()
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: android.content.Intent?) = read()
+        }
+        androidx.core.content.ContextCompat.registerReceiver(ctx, receiver, android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION"), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) = read()
+        }
+        ctx.contentResolver.registerContentObserver(android.provider.Settings.System.CONTENT_URI, true, observer)
+        onDispose {
+            runCatching { ctx.unregisterReceiver(receiver) }
+            ctx.contentResolver.unregisterContentObserver(observer)
+        }
+    }
+    return vol
+}
+
 /** System media volume with speaker glyphs at each end. */
 @Composable
 private fun VolumeBar() {
@@ -227,10 +251,15 @@ private fun VolumeBar() {
     val ctx = LocalContext.current
     val audio = remember { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val max = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
-    var vol by remember { mutableStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()) }
+    // The slider is the phone's media volume: it moves with the hardware buttons and moves them back.
+    val system by rememberSystemVolume(audio, max)
+    var touched by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(system) { touched?.let { if (kotlin.math.abs(system - it) < 0.08f) touched = null } }
+    val vol = touched ?: system
     fun set(x: Float, w: Int) {
-        vol = (x / w).coerceIn(0f, 1f)
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, (vol * max).toInt(), 0)
+        val v = (x / w).coerceIn(0f, 1f)
+        touched = v
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, Math.round(v * max), 0)
     }
     Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         IcV(Icons.Rounded.VolumeMute, 16.dp, lo.grey)

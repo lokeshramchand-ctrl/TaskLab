@@ -133,7 +133,6 @@ import java.net.InetAddress
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.util.concurrent.ConcurrentHashMap
-import com.lomu.app.constants.StopMusicOnTaskClearKey
 import com.lomu.app.db.MusicDatabase
 import com.lomu.app.db.entities.Event
 import com.lomu.app.db.entities.FormatEntity
@@ -3414,14 +3413,11 @@ class MusicService :
      * is the thing still holding playback, so it is also the thing that can stop it.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (dataStore.get(StopMusicOnTaskClearKey, false)) {
-            Timber.tag(TAG).d("Task removed with stop-on-task-clear enabled, stopping playback")
-            player.stop()
-            // stopSelf as well as stop(): a paused-but-alive session leaves the
-            // notification sitting in the shade after the app is gone, which reads as the
-            // setting not having worked even though the audio did stop.
-            stopSelf()
-        }
+        // Swiping LoMu away from the recent apps always stops the music (there is no setting for it).
+        Timber.tag(TAG).d("Task removed, stopping playback")
+        player.stop()
+        // stopSelf as well as stop(): a paused-but-alive session leaves the notification in the shade.
+        stopSelf()
         super.onTaskRemoved(rootIntent)
     }
 

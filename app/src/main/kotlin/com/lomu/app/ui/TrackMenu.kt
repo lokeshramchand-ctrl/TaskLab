@@ -62,6 +62,16 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
     val playlistsFlow = remember(db) { db?.playlists(PlaylistSortType.CREATE_DATE, true) ?: flowOf(emptyList()) }
     val playlists by playlistsFlow.collectAsState(emptyList())
     val liked = songRow?.song?.liked == true
+    // Search results carry no album, so look it up for "Go to Album".
+    var album by remember(m.id) { mutableStateOf(m.album?.takeIf { it.id.isNotBlank() }?.let { it.id to it.title }) }
+    LaunchedEffect(m.id) {
+        if (album == null) {
+            val found = withContext(Dispatchers.IO) {
+                com.music.innertube.YouTube.next(com.music.innertube.models.WatchEndpoint(videoId = m.id)).getOrNull()?.items?.firstOrNull { it.id == m.id }?.album
+            }
+            if (found != null) album = found.id to found.name
+        }
+    }
     var page by remember { mutableStateOf(0) } // 0 menu, 1 pick a playlist, 2 name a new playlist
     var name by remember { mutableStateOf("") }
 
@@ -152,31 +162,31 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
                 when (page) {
                     0 -> {
-                        MenuRow(Icons.Rounded.PlaylistPlay, "Play Next") { enqueue(true) }
-                        MenuRow(Icons.Rounded.QueueMusic, "Add to Queue") { enqueue(false) }
-                        MenuRow(Icons.Rounded.Radio, "Start Radio") { pc?.playRadio(m); done() }
-                        MenuRow(if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (liked) "Remove from Liked Songs" else "Like", tint = if (liked) lo.signal else null) { toggleLike() }
-                        MenuRow(Icons.Rounded.PlaylistAdd, "Add to Playlist…") { page = 1 }
-                        m.album?.takeIf { it.id.isNotBlank() }?.let { a -> MenuRow(Icons.Rounded.Album, "Go to Album") { onNavigate(Screen.Album(a.id)); onDismiss() } }
+                        MenuRow(Ph.Queue, "Play Next") { enqueue(true) }
+                        MenuRow(Ph.Plus, "Add to Queue") { enqueue(false) }
+                        MenuRow(Ph.Radio, "Start Radio") { pc?.playRadio(m); done() }
+                        MenuRow(if (liked) Ph.HeartFill else Ph.Heart, if (liked) "Remove from Liked Songs" else "Like", tint = if (liked) lo.signal else null) { toggleLike() }
+                        MenuRow(Ph.AddList, "Add to Playlist…") { page = 1 }
+                        album?.let { (albumId, _) -> MenuRow(Ph.Disc, "Go to Album") { onNavigate(Screen.Album(albumId)); onDismiss() } }
                         val withIds = m.artists.filter { !it.id.isNullOrBlank() }.take(3)
-                        withIds.forEach { a -> MenuRow(Icons.Rounded.Person, if (withIds.size > 1) "Go to ${a.name}" else "Go to Artist") { onNavigate(Screen.Artist(a.id!!)); onDismiss() } }
-                        MenuRow(Icons.Rounded.Share, "Share") {
+                        withIds.forEach { a -> MenuRow(Ph.User, if (withIds.size > 1) "Go to ${a.name}" else "Go to Artist") { onNavigate(Screen.Artist(a.id!!)); onDismiss() } }
+                        MenuRow(Ph.Share, "Share") {
                             val send = Intent(Intent.ACTION_SEND).setType("text/plain")
                                 .putExtra(Intent.EXTRA_TEXT, "${m.title} · ${m.artists.joinToString(", ") { it.name }}\nhttps://music.youtube.com/watch?v=${m.id}")
                             ctx.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                             onDismiss()
                         }
-                        target.onRemove?.let { rm -> MenuRow(Icons.Rounded.RemoveCircleOutline, target.removeLabel ?: "Remove", tint = lo.red) { rm(); done() } }
+                        target.onRemove?.let { rm -> MenuRow(Ph.Close, target.removeLabel ?: "Remove", tint = lo.red) { rm(); done() } }
                     }
                     1 -> {
-                        MenuRow(Icons.Rounded.ArrowBack, "Add to Playlist") { page = 0 }
-                        MenuRow(Icons.Rounded.Add, "New Playlist…", tint = lo.signal) { page = 2 }
+                        MenuRow(Ph.Left, "Add to Playlist") { page = 0 }
+                        MenuRow(Ph.Plus, "New Playlist…", tint = lo.signal) { page = 2 }
                         playlists.filter { it.playlist.isEditable }.forEach { pl ->
-                            MenuRow(Icons.Rounded.QueueMusic, pl.playlist.name, sub = "${pl.songCount} songs") { addTo(pl) }
+                            MenuRow(Ph.Playlist, pl.playlist.name, sub = "${pl.songCount} songs") { addTo(pl) }
                         }
                     }
                     else -> {
-                        MenuRow(Icons.Rounded.ArrowBack, "New Playlist") { page = 1 }
+                        MenuRow(Ph.Left, "New Playlist") { page = 1 }
                         BasicTextField(
                             value = name, onValueChange = { name = it }, singleLine = true,
                             textStyle = LoType.body.copy(color = lo.ink), cursorBrush = SolidColor(lo.signal),
@@ -192,10 +202,10 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
 }
 
 @Composable
-private fun MenuRow(icon: ImageVector, label: String, tint: Color? = null, sub: String? = null, onClick: () -> Unit) {
+private fun MenuRow(icon: Ph, label: String, tint: Color? = null, sub: String? = null, onClick: () -> Unit) {
     val lo = LocalLo.current
     Row(Modifier.fillMaxWidth().pressable(RoundedCornerShape(12.dp), onClick = onClick).padding(vertical = 13.dp), verticalAlignment = Alignment.CenterVertically) {
-        IcV(icon, 24.dp, tint ?: lo.ink)
+        Ic(icon, 22.dp, tint ?: lo.ink)
         Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
             Text(label, style = LoType.body.copy(fontSize = 17.sp), color = tint ?: lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -92,6 +92,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** While this phone steers another device, its volume buttons change that device's volume. */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val up = event.keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP
+        if ((up || event.keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) && event.action == android.view.KeyEvent.ACTION_DOWN) {
+            if (connectClient.nudgeRemoteVolume(if (up) 0.06 else -0.06)) return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onStop() {
         connectClient.stopIfIdle()
         super.onStop()

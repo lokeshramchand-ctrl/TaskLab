@@ -1,6 +1,15 @@
 package com.lomu.app.sync
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import android.media.AudioManager
 import android.os.Build
 import androidx.media3.common.Player
@@ -66,6 +75,48 @@ class ConnectClient @Inject constructor(
     val target: StateFlow<String?> = _target.asStateFlow()
 
     private val localPlaying = MutableStateFlow(false)
+    private val volumeTick = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private var volReceiver: BroadcastReceiver? = null
+    private var volObserver: ContentObserver? = null
+
+    /** Tells the other devices whenever this phone's media volume changes (buttons, slider, command). */
+    private fun watchVolume(on: Boolean) {
+        volReceiver?.let { runCatching { context.unregisterReceiver(it) } }
+        volReceiver = null
+        volObserver?.let { context.contentResolver.unregisterContentObserver(it) }
+        volObserver = null
+        if (!on) return
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) { volumeTick.tryEmit(Unit) }
+        }
+        ContextCompat.registerReceiver(context, r, IntentFilter("android.media.VOLUME_CHANGED_ACTION"), ContextCompat.RECEIVER_NOT_EXPORTED)
+        val o = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) { volumeTick.tryEmit(Unit) }
+        }
+        context.contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, o)
+        volReceiver = r
+        volObserver = o
+    }
+
+    private var volumeGuess: Triple<String, Double, Long>? = null
+    private var volumeToast: Toast? = null
+
+    /**
+     * The phone's hardware volume buttons while it steers another device: they change that device's
+     * volume (as in Spotify Connect). Returns false when nothing is steered, so Android handles the key.
+     */
+    fun nudgeRemoteVolume(delta: Double): Boolean {
+        val r = remote.value ?: return false
+        val now = System.currentTimeMillis()
+        // Quick presses add up before the device has had time to report its new volume.
+        val base = volumeGuess?.takeIf { it.first == r.id && now - it.third < 1500 }?.second ?: r.volume
+        val v = (base + delta).coerceIn(0.0, 1.0)
+        volumeGuess = Triple(r.id, v, now)
+        send(r.id, JSONObject().put("type", "volume").put("volume", v))
+        volumeToast?.cancel()
+        volumeToast = Toast.makeText(context, "${r.name} · volume ${(v * 100).toInt()}%", Toast.LENGTH_SHORT).also { it.show() }
+        return true
+    }
 
     /**
      * The device this phone is steering. It is chosen in the device list, or latched automatically when
@@ -94,6 +145,7 @@ class ConnectClient @Inject constructor(
 
     fun attach(connection: PlayerConnection?) {
         reporter?.cancel()
+        watchVolume(connection != null)
         pc = connection
         val c = connection ?: return
         c.player.addListener(object : Player.Listener {
@@ -108,6 +160,7 @@ class ConnectClient @Inject constructor(
                     .distinctUntilChanged().debounce(150).collect { report() }
             }
             launch { seekTick.debounce(150).collect { report() } }
+            launch { volumeTick.debounce(120).collect { report() } } // hardware buttons and the system slider reach the other devices
             launch { while (true) { delay(5000); if (c.isPlaying.value) report() } }
             // Playing here again ends remote control.
             launch { c.isPlaying.collect { localPlaying.value = it; if (it) _target.value = null } }

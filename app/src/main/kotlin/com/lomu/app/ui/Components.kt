@@ -223,7 +223,7 @@ fun MediaRow(
                 if (line.isNotBlank()) Text(line, style = LoType.small, color = lo.grey, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (trailing != null) Text(trailing, style = LoType.small, color = lo.grey, modifier = Modifier.padding(start = 10.dp))
-            if (menu != null) Box(Modifier.size(40.dp).pressable(CircleShape) { openMenu(menu) }, Alignment.Center) { Icon(Icons.Rounded.MoreHoriz, "More", tint = lo.grey, modifier = Modifier.size(22.dp)) }
+            if (menu != null) Box(Modifier.size(40.dp).pressable(CircleShape) { openMenu(menu) }, Alignment.Center) { Ic(Ph.More, 22.dp, lo.grey) }
             else Spacer(Modifier.width(6.dp))
         }
         if (separator) Hairline(inset)
