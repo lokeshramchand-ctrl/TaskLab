@@ -31,8 +31,8 @@ export function Brand({ mini }: { mini?: boolean }) {
       {!mini && <span className="word">LoMu</span>}
       <style jsx>{`
         :global(.brand) { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-        .mark { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: var(--ink); color: var(--on-ink); flex: none; }
-        .word { font-size: 17px; font-weight: 600; letter-spacing: -.04em; }
+        .mark { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(180deg, #5ac8fa, var(--signal)); color: #fff; flex: none; }
+        .word { font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: .01em; }
       `}</style>
     </Link>
   );
@@ -118,23 +118,23 @@ export function Sidebar() {
       </div>
 
       <style jsx>{`
-        .side { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; background: var(--side-bg); border-right: 1px solid var(--border); z-index: 40; overflow: hidden; }
-        .top { height: var(--top-h); display: flex; align-items: center; justify-content: space-between; padding: 0 16px 0 20px; border-bottom: 1px solid var(--border); flex: none; }
+        .side { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; background: var(--side-bg); border-right: .5px solid var(--border); z-index: 40; overflow: hidden; }
+        .top { height: var(--top-h); display: flex; align-items: center; justify-content: space-between; padding: 0 16px 0 20px; flex: none; }
         .expand { margin: 8px auto 0; }
         .nav { flex: 1; overflow-y: auto; padding: 12px; scrollbar-width: thin; }
-        .label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 14px 10px 6px; white-space: nowrap; }
+        .label { font-size: 12.5px; font-weight: 600; color: var(--muted); padding: 16px 12px 6px; white-space: nowrap; }
         .nav .label:first-child { padding-top: 6px; }
-        .foot { border-top: 1px solid var(--border); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-        :global(.side .link) { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 10px; border-radius: var(--r-sm); color: var(--muted); font-weight: 500; font-size: 14px; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease); }
+        .foot { border-top: .5px solid var(--border); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+        :global(.side .link) { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: var(--r-sm); color: var(--text); font-weight: 500; font-size: 15px; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease); }
         :global(.side .link:hover) { background: var(--surface-2); color: var(--text); }
-        :global(.side .link.active) { background: var(--ink); color: var(--on-ink); }
+        :global(.side .link.active) { background: var(--surface-2); color: var(--signal); font-weight: 600; }
         :global(.side .link.sub) { height: 34px; font-size: 13.5px; }
         :global(.side .link svg) { flex: none; }
-        .themes { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); }
-        .themes button { flex: 1; height: 28px; border-radius: 999px; display: grid; place-items: center; color: var(--muted); transition: all .2s; }
-        .themes button.on { background: var(--surface); color: var(--text); box-shadow: var(--lift); }
+        .themes { display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); }
+        .themes button { flex: 1; height: 28px; border-radius: 9px; display: grid; place-items: center; color: var(--muted); transition: all .2s; }
+        .themes button.on { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
         .user { display: flex; align-items: center; gap: 10px; padding: 4px 2px 0; }
-        .av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--signal-soft); color: var(--signal); font-weight: 600; font-size: 13px; flex: none; }
+        .av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #c3b1f5, #6f7bd9); color: #fff; font-weight: 600; font-size: 13px; flex: none; }
         .who { font-size: 13px; font-weight: 500; }
         .st { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); }
         .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-2); }
@@ -191,10 +191,10 @@ export function Topbar() {
         <kbd>/</kbd>
       </form>
       <style jsx>{`
-        .top { position: sticky; top: 0; z-index: 30; height: var(--top-h); display: flex; align-items: center; gap: 16px; padding: 0 var(--gutter); background: var(--glass); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+        .top { position: sticky; top: 0; z-index: 30; height: var(--top-h); display: flex; align-items: center; gap: 16px; padding: 0 var(--gutter); background: var(--glass); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); border-bottom: .5px solid var(--border); }
         .mobile-brand { display: none; }
-        .search { display: flex; align-items: center; gap: 10px; height: 38px; width: min(420px, 100%); padding: 0 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border-2); color: var(--muted); transition: border-color .2s, box-shadow .2s; }
-        .search:focus-within { border-color: var(--signal); box-shadow: 0 0 0 4px var(--signal-soft); color: var(--text); }
+        .search { display: flex; align-items: center; gap: 10px; height: 38px; width: min(420px, 100%); padding: 0 14px; border-radius: 999px; background: var(--surface-2); border: 0; color: var(--muted); transition: box-shadow .2s; }
+        .search:focus-within { box-shadow: 0 0 0 3px var(--signal-soft); color: var(--text); }
         .search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; font-size: 14px; }
         .search input::placeholder { color: var(--muted); }
         kbd { font: inherit; font-size: 11px; font-weight: 600; color: var(--muted); border: 1px solid var(--border-2); border-radius: 6px; padding: 0 6px; line-height: 18px; }
@@ -218,9 +218,9 @@ export function MobileTabs() {
       <style jsx>{`
         .tabs { display: none; }
         @media (max-width: 900px) {
-          .tabs { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; height: calc(60px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: var(--glass); backdrop-filter: blur(14px); border-top: 1px solid var(--border); }
-          .tabs :global(a) { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 10.5px; font-weight: 500; }
-          .tabs :global(a.on) { color: var(--text); }
+          .tabs { display: flex; gap: 2px; position: fixed; left: 14px; right: 14px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 45; height: 62px; padding: 4px; border-radius: 36px; background: color-mix(in srgb, var(--bg) 95%, transparent); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); box-shadow: var(--lift-hi); border: .5px solid var(--border); }
+          .tabs :global(a) { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--text); font-size: 10px; font-weight: 700; border-radius: 30px; transition: background .25s var(--ease), color .25s var(--ease); }
+          .tabs :global(a.on) { color: var(--signal); background: var(--surface-2); }
         }
       `}</style>
     </nav>

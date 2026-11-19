@@ -54,7 +54,7 @@ export function Seek({ compact = false }: { compact?: boolean }) {
         .seek { display: flex; align-items: center; gap: 12px; width: 100%; }
         .time { font-size: 12px; color: var(--muted); width: 38px; }
         .time.r { text-align: right; }
-        .track { position: relative; flex: 1; height: 4px; border-radius: 99px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); cursor: pointer; touch-action: none; }
+        .track { position: relative; flex: 1; height: 4px; border-radius: 99px; background: var(--surface-2); cursor: pointer; touch-action: none; }
         .track::before { content: ''; position: absolute; inset: -10px 0; }
         .fill { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--ink); }
         .knob { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); transform: translate(-50%, -50%) scale(0); transition: transform .3s var(--spring); }
@@ -77,7 +77,7 @@ export function PlayerBar() {
   return (
     <div className="bar">
       <button className="meta" onClick={() => P.setExpanded(true)} aria-label="Open player">
-        <Cover src={track.thumb} size={48} radius={9} />
+        <Cover src={track.thumb} size={40} radius={8} />
         <div className="grow" style={{ textAlign: 'left' }}>
           <div className="t clamp1">{track.title}</div>
           <div className={`s clamp1${error ? ' bad' : ''}`}>{error ?? (buffering ? 'Loading…' : artistNames(track.artists))}</div>
@@ -114,25 +114,25 @@ export function PlayerBar() {
         <Seek compact />
       </div>
       <style jsx>{`
-        .bar { position: fixed; z-index: 50; bottom: 0; left: var(--side-w); right: 0; height: var(--player-h); display: flex; align-items: center; gap: 12px; padding: 0 var(--gutter); background: var(--glass); backdrop-filter: blur(14px); border-top: 1px solid var(--border); animation: rise .4s var(--ease-out) both; }
+        .bar { position: fixed; z-index: 50; bottom: 0; left: var(--side-w); right: 0; height: var(--player-h); display: flex; align-items: center; gap: 12px; padding: 0 var(--gutter); background: var(--glass); backdrop-filter: blur(30px) saturate(1.8); -webkit-backdrop-filter: blur(30px) saturate(1.8); border-top: .5px solid var(--border); animation: rise .4s var(--ease-out) both; }
         .meta { display: flex; align-items: center; gap: 12px; min-width: 0; width: 300px; }
-        .t { font-weight: 600; font-size: 13.5px; letter-spacing: -.015em; }
+        .t { font-weight: 600; font-size: 14px; letter-spacing: -.02em; }
         .s { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
         .s.bad { color: var(--red-t); }
         .center { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
         .ctrls { display: flex; align-items: center; gap: 8px; }
-        .play { width: 38px; height: 38px; border-radius: 50%; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; transition: transform .3s var(--spring); }
-        .play:hover { background: color-mix(in srgb, var(--ink) 88%, var(--bg)); }
+        .play { width: 40px; height: 40px; border-radius: 50%; background: transparent; color: var(--text); display: grid; place-items: center; transition: transform .3s var(--spring), background .2s; }
+        .play:hover { background: var(--surface-2); }
         .play:active { transform: scale(.93); }
         .seekrow { width: min(560px, 100%); }
         .right { display: flex; gap: 2px; width: 120px; justify-content: flex-end; }
         .mobile-progress { display: none; }
         @media (max-width: 900px) {
-          .bar { left: 8px; right: 8px; bottom: calc(68px + env(safe-area-inset-bottom)); height: 58px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--lift-hi); padding: 0 8px 0 8px; gap: 4px; }
+          .bar { left: 14px; right: 14px; bottom: calc(78px + env(safe-area-inset-bottom)); height: 54px; border: .5px solid var(--border); border-radius: 32px; background: color-mix(in srgb, var(--bg) 95%, transparent); box-shadow: var(--lift-hi); padding: 0 6px 0 9px; gap: 4px; }
           .meta { flex: 1; width: auto; }
           .center { flex: none; }
           :global(.hide-sm) { display: none !important; }
-          .mobile-progress { display: block; position: absolute; left: 14px; right: 14px; bottom: 3px; }
+          .mobile-progress { display: none; }
           .play { width: 36px; height: 36px; }
         }
       `}</style>
