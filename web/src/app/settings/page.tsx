@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { useLibrary } from '@/player/library';
 import { usePlayer } from '@/player/store';
 import { HOME_SECTIONS, useSettings, type Theme } from '@/player/settings';
@@ -79,6 +80,9 @@ export default function SettingsPage() {
             <button className="btn" onClick={exportLibrary}>
               Export
             </button>
+          </Row>
+          <Row icon="download" label="Import from Google Takeout" hint="Bring in your YouTube Music playlists and likes from a Takeout export.">
+            <Link href="/import" className="btn">Import</Link>
           </Row>
           <Row icon="history" label="Clear listening history" hint="Recommendations start learning again from scratch.">
             {confirmClear ? (

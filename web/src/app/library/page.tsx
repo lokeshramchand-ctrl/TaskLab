@@ -54,7 +54,7 @@ export default function Library() {
 
   return (
     <>
-      <PageHeader eyebrow="Library" title="Your library" sub="Everything you have liked, saved and played. Synced to your other devices." />
+      <PageHeader eyebrow="Library" title="Your library" sub="Everything you have liked, saved and played. Synced to your other devices." actions={<Link href="/import" className="btn"><Icon name="download" size={16} /> Import</Link>} />
 
       <section className="grid-stats">
         <button className="statbtn" onClick={() => pick('liked')}><Stat icon="heart" label="Liked songs" value={likedAll.length} /></button>

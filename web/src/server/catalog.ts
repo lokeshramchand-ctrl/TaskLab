@@ -305,3 +305,49 @@ async function lrclib(t: { title: string; artist: string; album?: string; durati
   }
   return null;
 }
+
+export type ImportRef = { id?: string; title?: string; artist?: string };
+
+/** Resolves Google Takeout rows (a video id, or a title and artist) into playable tracks. */
+export async function resolveImport(refs: ImportRef[]): Promise<(Track | null)[]> {
+  const client = await yt();
+  const one = async (r: ImportRef): Promise<Track | null> => {
+    try {
+      if (r.title) {
+        const q = [r.title, r.artist].filter(Boolean).join(' ');
+        const hit = (await search(q)).songs[0];
+        if (hit) return hit;
+      }
+      if (r.id && /^[\w-]{11}$/.test(r.id)) {
+        const info: any = await client.getBasicInfo(r.id);
+        const b = info.basic_info ?? {};
+        if (!b.title) return null;
+        const name = String(b.author ?? '').replace(/ - Topic$/, '');
+        const thumbs: any[] = b.thumbnail ?? [];
+        return {
+          kind: 'song',
+          id: r.id,
+          title: String(b.title),
+          artists: name ? [{ name }] : [],
+          duration: typeof b.duration === 'number' ? b.duration : undefined,
+          thumb: thumbs[thumbs.length - 1]?.url,
+          video: true,
+        };
+      }
+    } catch {
+      /* unresolved rows are reported as null */
+    }
+    return null;
+  };
+  const out: (Track | null)[] = new Array(refs.length).fill(null);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: 5 }, async () => {
+      while (next < refs.length) {
+        const i = next++;
+        out[i] = await one(refs[i]);
+      }
+    }),
+  );
+  return out;
+}
