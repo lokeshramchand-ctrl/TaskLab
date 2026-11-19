@@ -32,6 +32,7 @@ const MAP = {
   plus: ['regular', 'plus'],
   volume: ['regular', 'speaker-high'],
   devices: ['regular', 'devices'],
+  share: ['regular', 'share-network'],
   laptop: ['regular', 'laptop'],
   phone: ['regular', 'device-mobile'],
   mute: ['regular', 'speaker-slash'],

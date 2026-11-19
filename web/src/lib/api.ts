@@ -25,6 +25,7 @@ export const api = {
   playlist: (id: string) => get<PlaylistData>(`/api/playlist/${enc(id)}`),
   nextUp: (id: string, recent: string[]) => get<Track[]>(`/api/recs/next?seed=${enc(id)}&recent=${enc(recent.join(','))}`),
   radio: (id: string) => get<Track[]>(`/api/radio/${enc(id)}`),
+  track: (id: string) => get<Track | null>(`/api/track/${enc(id)}`),
   related: (id: string) => get<Shelf[]>(`/api/related/${enc(id)}`),
   lyrics: (t: Track) =>
     get<LyricsData>(

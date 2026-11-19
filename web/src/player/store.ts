@@ -61,6 +61,7 @@ export const remoteRoute: {
   play?: (tracks: Track[], start: number) => boolean;
   radio?: (t: Track) => boolean;
   enqueue?: (t: Track[]) => boolean;
+  playNext?: (t: Track) => boolean;
 } = {};
 
 export const usePlayer = create<PlayerState>()(
@@ -165,6 +166,7 @@ export const usePlayer = create<PlayerState>()(
       },
       cycleRepeat: () => set((s) => ({ repeat: s.repeat === 'off' ? 'all' : s.repeat === 'all' ? 'one' : 'off' })),
       playNext: (t) => {
+        if (remoteRoute.playNext?.(t)) return;
         const { queue, index } = get();
         if (!queue.length) return get().play([t]);
         const q = queue.filter((x, i) => i <= index || x.id !== t.id);

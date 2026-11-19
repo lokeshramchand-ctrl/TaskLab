@@ -126,6 +126,12 @@ remoteRoute.radio = (track) => {
   sendCommand(to, { type: 'radio', track });
   return true;
 };
+remoteRoute.playNext = (track) => {
+  const to = remoteId();
+  if (!to) return false;
+  sendCommand(to, { type: 'enqueue', tracks: [track], next: true });
+  return true;
+};
 remoteRoute.enqueue = (tracks) => {
   const to = remoteId();
   if (!to) return false;
@@ -187,7 +193,11 @@ function exec(cmd: Record<string, any>, from: string) {
       if (cmd.track?.id) P.playRadio(cmd.track as Track);
       break;
     case 'enqueue':
-      if (Array.isArray(cmd.tracks)) P.enqueue(cmd.tracks as Track[]);
+      if (Array.isArray(cmd.tracks)) {
+        const ts = cmd.tracks as Track[];
+        if (cmd.next) [...ts].reverse().forEach((t) => P.playNext(t));
+        else P.enqueue(ts);
+      }
       break;
     case 'handoff':
       if (typeof cmd.to === 'string' && cmd.to !== useConnect.getState().self) handoffTo(cmd.to);

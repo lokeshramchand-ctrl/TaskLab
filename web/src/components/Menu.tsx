@@ -1,10 +1,11 @@
 'use client';
 import { create } from 'zustand';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Track } from '@/lib/types';
 import { usePlayer } from '@/player/store';
 import { useLibrary } from '@/player/library';
+import { api } from '@/lib/api';
 import { Icon, type IconName } from './Icon';
 import { toast } from './Toast';
 
@@ -46,10 +47,44 @@ export function TrackMenuHost() {
     };
   }, [track, close]);
 
+  const [fit, setFit] = useState<number | null>(null);
+  // Search results carry no album, so look it up for "Go to album".
+  const [album, setAlbum] = useState<{ id: string; name: string } | null>(null);
+  useEffect(() => {
+    setAlbum(null);
+    if (!track) return;
+    if (track.album?.id) return setAlbum({ id: track.album.id, name: track.album.name });
+    let live = true;
+    api.track(track.id).then((t) => live && t?.album?.id && setAlbum({ id: t.album.id, name: t.album.name })).catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [track]);
+  // Keep the whole menu on screen whatever its height (it changes with the page and the artist count).
+  useLayoutEffect(() => {
+    if (!track || !ref.current) return setFit(null);
+    const h = ref.current.offsetHeight;
+    setFit(Math.max(12, Math.min(y, window.innerHeight - h - 12)));
+  }, [track, y, mode, lib.playlists.length, album]);
+
   if (!track) return null;
   const W = 260;
-  const left = typeof window !== 'undefined' ? Math.min(x, window.innerWidth - W - 12) : x;
-  const top = typeof window !== 'undefined' ? Math.min(y, window.innerHeight - 380) : y;
+  const left = typeof window !== 'undefined' ? Math.max(12, Math.min(x, window.innerWidth - W - 12)) : x;
+  const top = fit ?? y;
+  const share = async () => {
+    const url = `https://music.youtube.com/watch?v=${track.id}`;
+    close();
+    try {
+      if (navigator.share) await navigator.share({ title: track.title, text: `${track.title} · ${track.artists.map((a) => a.name).join(', ')}`, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        toast('Link copied');
+      }
+    } catch {
+      /* share sheet dismissed */
+    }
+  };
+  const artists = track.artists.filter((a) => a.id).slice(0, 3);
   const liked = lib.isLiked(track.id);
   const go = (href: string) => {
     close();
@@ -79,8 +114,11 @@ export function TrackMenuHost() {
           {playlistId != null && playlistIndex != null && (
             <Item icon="close" label="Remove from this playlist" onClick={() => (lib.removeFromPlaylist(playlistId, playlistIndex), close())} />
           )}
-          {track.artists[0]?.id && <Item icon="user" label="Go to artist" onClick={() => go(`/artist/${track.artists[0].id}`)} />}
-          {track.album?.id && <Item icon="disc" label="Go to album" onClick={() => go(`/album/${track.album!.id}`)} />}
+          {artists.map((a) => (
+            <Item key={a.id} icon="user" label={artists.length > 1 ? `Go to ${a.name}` : 'Go to artist'} onClick={() => go(`/artist/${a.id}`)} />
+          ))}
+          {album && <Item icon="disc" label="Go to album" onClick={() => go(`/album/${album.id}`)} />}
+          <Item icon="share" label="Share" onClick={share} />
         </>
       ) : (
         <>
@@ -102,7 +140,7 @@ export function TrackMenuHost() {
         </>
       )}
       <style jsx>{`
-        .menu { position: fixed; z-index: 80; border-radius: 14px; padding: 6px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--lift-hi); }
+        .menu { position: fixed; z-index: 80; max-height: calc(100vh - 24px); overflow-y: auto; border-radius: 14px; padding: 6px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--lift-hi); }
         .menu-head { padding: 8px 10px 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
         :global(.menu-item) { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border-radius: 9px; text-align: left; font-weight: 500; font-size: 13.5px; color: var(--text); }
         :global(.menu-item:hover) { background: var(--surface-2); }

@@ -15,9 +15,9 @@ class FakePhone {
   devices: Dev[] = [];
   cmds: Record<string, any>[] = [];
   private ctl = new AbortController();
-  constructor(private base: string, private cookie: string) {}
+  constructor(private base: string, private cookie: string, readonly id = PHONE) {}
   async connect() {
-    const r = await fetch(`${this.base}/api/connect/events?id=${PHONE}&name=Pixel%20E2E&kind=android`, { headers: { cookie: this.cookie }, signal: this.ctl.signal });
+    const r = await fetch(`${this.base}/api/connect/events?id=${this.id}&name=Pixel%20E2E&kind=android`, { headers: { cookie: this.cookie }, signal: this.ctl.signal });
     const reader = r.body!.getReader();
     const dec = new TextDecoder();
     let buf = '';
@@ -45,15 +45,17 @@ class FakePhone {
     return fetch(`${this.base}${path}`, { method: 'POST', headers: { cookie: this.cookie, 'content-type': 'application/json' }, body: JSON.stringify(body) });
   }
   send(to: string, cmd: Record<string, unknown>) {
-    return this.post('/api/connect/command', { from: PHONE, to, cmd });
+    return this.post('/api/connect/command', { from: this.id, to, cmd });
   }
-  report(playing: boolean, position = 30) {
+  report(playing: boolean, position = 30, volume = 1) {
     return this.post('/api/connect/state', {
-      id: PHONE,
-      state: { track: { id: 'phone-song', title: 'Phone Song', artists: [{ name: 'X' }] }, playing, position, duration: 200, volume: 1, shuffle: false, repeat: 'off', queueLen: 1 },
+      id: this.id,
+      state: { track: { id: 'phone-song', title: 'Phone Song', artists: [{ name: 'X' }] }, playing, position, duration: 200, volume, shuffle: false, repeat: 'off', queueLen: 1 },
     });
   }
-  web = () => this.devices.find((d) => d.id !== PHONE);
+  /** The web tab under test (a tab from an earlier test may linger in the list for a few seconds). */
+  webId: string | null = null;
+  web = () => this.devices.find((d) => (this.webId ? d.id === this.webId : d.id !== this.id));
 }
 
 async function login(page: Page) {
@@ -69,9 +71,10 @@ test('web and phone stay in sync, both directions', async ({ page, request, base
   await request.post('/api/auth/setup', { data: { username: USER, password: PASS } });
   await login(page);
   const cookie = (await page.context().cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
-  const phone = new FakePhone(baseURL!, cookie);
+  const phone = new FakePhone(baseURL!, cookie, 'android-e2e-0001');
+  phone.webId = await page.evaluate(() => sessionStorage.getItem('lomu-device'));
   await phone.connect();
-  await expect.poll(() => phone.devices.length, { timeout: 15_000 }).toBe(2);
+  await expect.poll(() => phone.devices.length >= 2 && !!phone.web(), { timeout: 15_000 }).toBe(true);
 
   // Play on the web.
   await page.goto('/search?q=despacito');
@@ -143,5 +146,65 @@ test('web and phone stay in sync, both directions', async ({ page, request, base
   await expect.poll(() => phone.cmds.find((c) => c.type === 'load')?.tracks?.[0]?.id, { timeout: 10_000 }).toBe(VIDEO);
   await expect(page.getByText('Playing on Pixel E2E')).toBeVisible({ timeout: 10_000 });
 
+  phone.close();
+});
+
+test('song menu: every entry works, and queue actions follow the steered device', async ({ page, request, baseURL }) => {
+  await request.post('/api/auth/setup', { data: { username: USER, password: PASS } }); // no-op when it already exists
+  await login(page);
+  await page.goto('/search?q=despacito');
+  const row = page.locator('[role="button"]').filter({ hasText: /Despacito/i }).first();
+  await expect(row).toBeVisible({ timeout: 45_000 });
+  const open = async () => {
+    await row.hover();
+    await row.getByRole('button', { name: 'More' }).click();
+    await expect(page.getByRole('menu')).toBeVisible();
+  };
+
+  // The menu lists the usual entries and stays inside the viewport.
+  await open();
+  for (const name of ['Start radio', 'Play next', 'Add to queue', 'Like', 'Add to playlist', 'Go to album', 'Share']) {
+    await expect(page.getByRole('menu').getByText(name, { exact: false }).first()).toBeVisible();
+  }
+  await expect(page.getByRole('menu').getByText(/^Go to (?!album)/).first()).toBeVisible(); // 'Go to artist' or one entry per artist
+  const box = (await page.getByRole('menu').boundingBox())!;
+  const vp = page.viewportSize()!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(vp.height);
+
+  // Like toggles, and the menu reflects it.
+  await page.getByRole('menu').getByText('Like', { exact: true }).click();
+  await open();
+  await expect(page.getByRole('menu').getByText('Remove from liked')).toBeVisible();
+  await page.getByRole('menu').getByText('Remove from liked').click();
+
+  // Add to playlist -> New playlist (name asked with a prompt).
+  await open();
+  await page.getByRole('menu').getByText('Add to playlist').click();
+  page.once('dialog', (d) => d.accept('Menu Test'));
+  await page.getByRole('menu').getByText('New playlist').click();
+  await expect(page.getByText('Added to Menu Test')).toBeVisible();
+
+  // Go to album / artist navigate.
+  await open();
+  await page.getByRole('menu').getByText('Go to album').click();
+  await expect(page).toHaveURL(/\/album\//);
+  await page.goBack();
+  await expect(row).toBeVisible({ timeout: 30_000 });
+
+  // Queue actions are sent to the phone while the web steers it.
+  const cookie = (await page.context().cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+  const phone = new FakePhone(baseURL!, cookie, 'android-e2e-0002');
+  phone.webId = await page.evaluate(() => sessionStorage.getItem('lomu-device'));
+  await phone.connect();
+  await expect.poll(() => phone.devices.length >= 2 && !!phone.web(), { timeout: 15_000 }).toBe(true);
+  await phone.report(true);
+  await expect(page.getByText('Playing on Pixel E2E')).toBeVisible({ timeout: 10_000 });
+  await open();
+  await page.getByRole('menu').getByText('Play next').click();
+  await expect.poll(() => phone.cmds.find((c) => c.type === 'enqueue' && c.next)?.tracks?.length, { timeout: 10_000 }).toBe(1);
+  await open();
+  await page.getByRole('menu').getByText('Add to queue').click();
+  await expect.poll(() => phone.cmds.some((c) => c.type === 'enqueue' && !c.next), { timeout: 10_000 }).toBe(true);
   phone.close();
 });
