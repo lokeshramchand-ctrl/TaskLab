@@ -142,6 +142,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
             Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 IconBtnV(Icons.Rounded.ChatBubbleOutline, { mode = if (mode == 1) 0 else 1 }, size = 48.dp, iconSize = 24.dp, tint = if (mode == 1) lo.signal else sub)
                 IconBtnV(Icons.Rounded.KeyboardArrowDown, onClose, size = 48.dp, iconSize = 30.dp, tint = sub)
+                IconBtnV(Icons.Rounded.Devices, LocalOpenDevices.current, size = 48.dp, iconSize = 24.dp, tint = sub)
                 IconBtnV(Icons.Rounded.FormatListBulleted, { mode = if (mode == 2) 0 else 2 }, size = 48.dp, iconSize = 24.dp, tint = if (mode == 2) lo.signal else sub)
             }
         }

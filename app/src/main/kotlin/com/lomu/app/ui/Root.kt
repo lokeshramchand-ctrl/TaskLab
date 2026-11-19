@@ -73,17 +73,19 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
     var welcome by remember { mutableStateOf(!seenWelcome) }
     val pc = LocalPlayer.current
     val meta = pc?.mediaMetadata?.collectAsState()?.value
+    val remote = rememberRemote()
+    var showDevices by remember { mutableStateOf(false) }
 
     if (welcome) {
         Welcome { welcome = false; onWelcomeDone() }
         return
     }
-    BackHandler(enabled = showPlayer || nav.canPop) {
-        if (showPlayer) showPlayer = false else nav.pop()
+    BackHandler(enabled = showDevices || showPlayer || nav.canPop) {
+        if (showDevices) showDevices = false else if (showPlayer) showPlayer = false else nav.pop()
     }
     // Tab bar 58dp + gaps, plus the mini player capsule (48dp) when something is loaded.
-    val inset = (if (meta != null) 138.dp else 82.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    CompositionLocalProvider(LocalNav provides nav, LocalBottomInset provides inset) {
+    val inset = (if (meta != null || remote != null) 138.dp else 82.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    CompositionLocalProvider(LocalNav provides nav, LocalBottomInset provides inset, LocalOpenDevices provides { showDevices = true }) {
         Box(Modifier.fillMaxSize().background(lo.bg)) {
             AnimatedContent(
                 targetState = nav.current,
@@ -112,14 +114,16 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
                     .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, lo.bg.copy(alpha = 0.92f), lo.bg))),
             )
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp).padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (meta != null) MiniPlayer({ showPlayer = true })
+                if (remote != null) RemoteMiniPlayer(remote, { showPlayer = true })
+                else if (meta != null) MiniPlayer({ showPlayer = true })
                 TabBar(nav)
             }
             AnimatedVisibility(
                 visible = showPlayer,
                 enter = slideInVertically(tween(320)) { it } + fadeIn(tween(200)),
                 exit = slideOutVertically(tween(260)) { it } + fadeOut(tween(200)),
-            ) { FullPlayer { showPlayer = false } }
+            ) { if (remote != null) RemotePlayer(remote) { showPlayer = false } else FullPlayer { showPlayer = false } }
+            if (showDevices) DevicesSheet { showDevices = false }
         }
     }
 }

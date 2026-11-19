@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var lyricsHelper: LyricsHelper
     @Inject lateinit var syncClient: com.lomu.app.sync.SyncClient
     @Inject lateinit var importer: com.lomu.app.sync.YtmImporter
+    @Inject lateinit var connectClient: com.lomu.app.sync.ConnectClient
 
     private var connection by mutableStateOf<PlayerConnection?>(null)
 
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             if (service is MusicService.MusicBinder) {
                 connection = PlayerConnection(this@MainActivity, service, database, lifecycleScope)
+                connectClient.attach(connection)
             }
         }
 
@@ -71,6 +73,7 @@ class MainActivity : ComponentActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
                     syncClient.sync()
+                    connectClient.start() // no-op while already connected or signed out
                     delay(60_000)
                 }
             }
@@ -79,7 +82,7 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("lomu", MODE_PRIVATE)
         setContent {
             LoMuTheme {
-                CompositionLocalProvider(LocalPlayer provides connection, LocalLyrics provides lyricsHelper, com.lomu.app.ui.LocalSync provides syncClient, com.lomu.app.ui.LocalImporter provides importer) {
+                CompositionLocalProvider(LocalPlayer provides connection, LocalLyrics provides lyricsHelper, com.lomu.app.ui.LocalSync provides syncClient, com.lomu.app.ui.LocalConnect provides connectClient, com.lomu.app.ui.LocalImporter provides importer) {
                     LoMuRoot(
                         seenWelcome = prefs.getBoolean("seenWelcome", false),
                         onWelcomeDone = { prefs.edit().putBoolean("seenWelcome", true).apply() },
@@ -89,7 +92,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStop() {
+        connectClient.stopIfIdle()
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        connectClient.attach(null)
         runCatching { unbindService(serviceConnection) }
         connection?.dispose()
         connection = null

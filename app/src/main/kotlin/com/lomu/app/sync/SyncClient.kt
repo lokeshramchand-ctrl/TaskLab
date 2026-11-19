@@ -95,6 +95,19 @@ class SyncClient @Inject constructor(
         return r
     }
 
+    /** Streaming GET for server-sent events (no timeouts, caller closes it). Renews the token once on 401. */
+    fun openStream(path: String): okhttp3.Response {
+        val c = http.newBuilder().callTimeout(0, TimeUnit.SECONDS).readTimeout(0, TimeUnit.SECONDS).build()
+        fun req() = Request.Builder().url(base() + path).header("x-lomu-device", "android").header("Accept", "text/event-stream")
+            .apply { prefs.getString("access", null)?.let { header("Authorization", "Bearer $it") } }.build()
+        var r = c.newCall(req()).execute()
+        if (r.code == 401 && refresh()) { r.close(); r = c.newCall(req()).execute() }
+        return r
+    }
+
+    /** Authenticated JSON POST that returns the HTTP status. */
+    fun postAuthed(path: String, body: JSONObject): Int = call { post(path, body, auth = true) }.first
+
     /** Quick reachability check for the sign-in screen: asks the server who it is. */
     suspend fun ping(url: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
         val u = url.trim().trimEnd('/')
@@ -259,6 +272,16 @@ class SyncClient @Inject constructor(
     private fun doc(kind: String, key: String, value: JSONObject?, updated: Long, deleted: Boolean) =
         JSONObject().put("kind", kind).put("key", key).put("value", value ?: JSONObject.NULL).put("updated", updated).put("deleted", deleted)
 
+    fun metadataToTrack(m: MediaMetadata): JSONObject {
+        val artists = JSONArray()
+        m.artists.forEach { artists.put(JSONObject().put("id", it.id ?: JSONObject.NULL).put("name", it.name)) }
+        val t = JSONObject().put("kind", "song").put("id", m.id).put("title", m.title).put("artists", artists)
+        if (m.duration > 0) t.put("duration", m.duration)
+        m.thumbnailUrl?.let { t.put("thumb", it) }
+        m.album?.let { t.put("album", JSONObject().put("id", it.id).put("name", it.title)) }
+        return t
+    }
+
     private fun songToTrack(s: com.lomu.app.db.entities.Song): JSONObject {
         val artists = JSONArray()
         s.artists.forEach { artists.put(JSONObject().put("id", it.channelId ?: JSONObject.NULL).put("name", it.name)) }
@@ -269,7 +292,7 @@ class SyncClient @Inject constructor(
         return t
     }
 
-    private fun trackToMetadata(t: JSONObject): MediaMetadata? = runCatching {
+    fun trackToMetadata(t: JSONObject): MediaMetadata? = runCatching {
         val artists = t.optJSONArray("artists") ?: JSONArray()
         val a = (0 until artists.length()).map { artists.getJSONObject(it) }
         MediaMetadata(

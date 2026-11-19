@@ -132,7 +132,7 @@ fun HomeScreen() {
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(top.tracks.take(10)) { m ->
                         FeatureCard(m.thumbnailUrl, m.title, m.artists.joinToString { it.name }) {
-                            player?.playQueue(YouTubeQueue(WatchEndpoint(videoId = m.id), m))
+                            player?.playRadio(m)
                         }
                     }
                 }
@@ -156,7 +156,7 @@ fun HomeScreen() {
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(shelf.tracks) { m ->
                         MediaCard(m.thumbnailUrl, m.title, m.artists.joinToString { it.name }, now == m.id) {
-                            player?.playQueue(YouTubeQueue(WatchEndpoint(videoId = m.id), m))
+                            player?.playRadio(m)
                         }
                     }
                 }
@@ -693,6 +693,17 @@ fun SettingsScreen() {
                 ActionCell(if (st.busy) "Working…" else "Sign In", lo.signal) { scope.launch { sync?.signIn(url, user, pass, false); sync?.sync() } }
                 Hairline(16.dp)
                 ActionCell("Create Account", lo.signal) { scope.launch { sync?.signIn(url, user, pass, true); sync?.sync() } }
+            }
+        }
+        if (st.user != null) {
+            val openDevices = LocalOpenDevices.current
+            Group("Devices", footer = "See the other devices signed in to this account, move music between them, and control them from here.") {
+                Cell(Modifier.pressable(RoundedCornerShape(0.dp)) { openDevices() }) {
+                    IconTile(Ph.Headphones, lo.signal)
+                    Spacer(Modifier.width(14.dp))
+                    Text("Connect to a device", style = LoType.body, color = lo.ink, modifier = Modifier.weight(1f))
+                    Icon(Icons.Rounded.ChevronRight, null, tint = lo.grey.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+                }
             }
         }
         Group("Library", footer = "Copy your liked songs and playlists once. The Google session is discarded afterwards.") {
