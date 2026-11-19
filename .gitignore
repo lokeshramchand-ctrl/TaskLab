@@ -148,3 +148,6 @@ smoke-out/
 
 # Reference project (its own git repo), not part of LoMu
 Dashboard/
+
+# Full SF Pro download folder stays local; only the cuts the app bundles live in app/src/main/assets/fonts
+San-Francisco-Pro-Fonts/

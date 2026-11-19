@@ -134,7 +134,7 @@ private data class TabDef(val label: String, val on: ImageVector, val off: Image
 private fun TabBar(nav: Nav) {
     val lo = LocalLo.current
     val tabs = listOf(
-        TabDef("Home", Icons.Filled.Home, Icons.Filled.Home, Screen.Home),
+        TabDef("Home", SfIcons.HouseFill, SfIcons.HouseFill, Screen.Home),
         TabDef("New", Icons.Filled.GridView, Icons.Filled.GridView, Screen.New),
         TabDef("Library", Icons.Filled.LibraryMusic, Icons.Filled.LibraryMusic, Screen.Library),
         TabDef("Search", Icons.Rounded.Search, Icons.Rounded.Search, Screen.Search),
