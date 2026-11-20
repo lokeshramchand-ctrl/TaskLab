@@ -6,6 +6,7 @@ import { usePlayer } from '@/player/store';
 import { HOME_SECTIONS, useSettings, type Theme } from '@/player/settings';
 import { Icon, type IconName } from '@/components/Icon';
 import { PageHeader, Toggle } from '@/components/ui';
+import { ThemeSelect } from '@/components/Nav';
 import { toast } from '@/components/Toast';
 import { useAuth } from '@/player/sync';
 
@@ -49,14 +50,8 @@ export default function SettingsPage() {
         </Group>
 
         <Group title="Appearance">
-          <Row icon="sun" label="Theme" hint="Follow the system, or force light or dark.">
-            <div className="chips">
-              {themes.map((t) => (
-                <button key={t.id} className={theme === t.id ? 'on' : ''} onClick={() => useSettings.getState().setTheme(t.id)}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
+          <Row icon="sun" label="Interface theme" hint="Select or customise your interface colour scheme.">
+            <div style={{ width: 168 }}><ThemeSelect /></div>
           </Row>
         </Group>
 
@@ -193,10 +188,10 @@ function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
     <button role="switch" aria-checked={on} aria-label={label} className={`sw${on ? ' on' : ''}`} onClick={() => onChange(!on)}>
       <i />
       <style jsx>{`
-        .sw { position: relative; width: 44px; height: 24px; border-radius: 999px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-2); flex: none; transition: background .25s var(--ease); }
-        .sw i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .35s var(--spring), background .25s; }
-        .sw.on { background: var(--ink); box-shadow: none; }
-        .sw.on i { transform: translateX(20px); background: var(--on-ink); }
+                .sw { width: 28px; height: 16px; border-radius: 999px; background: var(--active); box-shadow: inset 0 0 0 1px var(--border-2); position: relative; flex: none; transition: background .2s var(--ease); }
+                .sw i { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: transform .25s var(--spring), background .2s; }
+                .sw.on { background: var(--signal); box-shadow: none; }
+                .sw.on i { transform: translateX(12px); background: #fff; }
       `}</style>
     </button>
   );

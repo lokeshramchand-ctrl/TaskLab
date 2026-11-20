@@ -68,7 +68,7 @@ export function TrackMenuHost() {
   }, [track, y, mode, lib.playlists.length, album]);
 
   if (!track) return null;
-  const W = 260;
+  const W = 232;
   const left = typeof window !== 'undefined' ? Math.max(12, Math.min(x, window.innerWidth - W - 12)) : x;
   const top = fit ?? y;
   const share = async () => {
@@ -93,7 +93,7 @@ export function TrackMenuHost() {
 
   const Item = ({ icon, label, onClick }: { icon: IconName; label: string; onClick: () => void }) => (
     <button className="menu-item" onClick={onClick}>
-      <Icon name={icon} size={17} />
+      <Icon name={icon} size={16} />
       <span>{label}</span>
     </button>
   );
@@ -101,8 +101,8 @@ export function TrackMenuHost() {
   return (
     <div ref={ref} className="menu fade-in" style={{ left, top, width: W }} role="menu">
       <div className="menu-head">
-        <div className="clamp1" style={{ fontWeight: 600 }}>{track.title}</div>
-        <div className="clamp1 muted" style={{ fontSize: 13 }}>{track.artists.map((a) => a.name).join(', ')}</div>
+        <div className="clamp1" style={{ fontWeight: 500, color: 'var(--ink)' }}>{track.title}</div>
+        <div className="clamp1 muted" style={{ fontSize: 12 }}>{track.artists.map((a) => a.name).join(', ')}</div>
       </div>
       {mode === 'main' ? (
         <>
@@ -140,10 +140,12 @@ export function TrackMenuHost() {
         </>
       )}
       <style jsx>{`
-        .menu { position: fixed; z-index: 80; max-height: calc(100vh - 24px); overflow-y: auto; border-radius: 14px; padding: 6px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--lift-hi); }
-        .menu-head { padding: 8px 10px 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-        :global(.menu-item) { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border-radius: 9px; text-align: left; font-weight: 500; font-size: 13.5px; color: var(--text); }
-        :global(.menu-item:hover) { background: var(--surface-2); }
+        .menu { position: fixed; z-index: 80; max-height: calc(100vh - 24px); overflow-y: auto; border-radius: 6px; padding: 4px; background: var(--surface); border: 1px solid var(--border-2); box-shadow: var(--lift-hi); }
+        .menu-head { padding: 6px 8px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+        :global(.menu-item) { display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px; border-radius: 4px; text-align: left; font-weight: 400; font-size: 13px; color: var(--text); }
+        :global(.menu-item svg) { color: var(--muted); flex: none; }
+        :global(.menu-item:hover) { background: var(--active); }
+        :global(.menu-item:hover svg) { color: var(--text); }
       `}</style>
     </div>
   );

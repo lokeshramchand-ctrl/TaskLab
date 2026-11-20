@@ -9,7 +9,7 @@ import { Icon } from './Icon';
 import { useMenu } from './Menu';
 import { warmProps } from '@/lib/warm';
 
-const CARD = 164;
+const CARD = 148;
 
 export function playTrackFrom(item: Track, siblings?: Track[], source = 'shelf') {
   const list = siblings?.length ? siblings : [item];
@@ -36,7 +36,7 @@ export function ItemCard({ item, siblings }: { item: Item; siblings?: Track[] })
       >
         <div className="art">
           <Cover src={item.thumb} size="100%" />
-          <span className="go"><Icon name={active && playing ? 'pause' : 'play'} size={16} /></span>
+          <span className="go"><Icon name={active && playing ? 'pause' : 'play'} size={14} /></span>
         </div>
         <div className="t clamp1">{item.title}</div>
         <div className="s clamp1">{artistNames(item.artists)}</div>
@@ -61,17 +61,17 @@ export function ItemCard({ item, siblings }: { item: Item; siblings?: Track[] })
 function CardStyle() {
   return (
     <style jsx global>{`
-      .it { display: block; width: ${CARD}px; text-align: left; border-radius: 14px; padding: 8px; margin: -8px; transition: background .2s var(--ease), transform .3s var(--spring); }
-      .it:hover { background: var(--surface); }
-      .it:active { transform: scale(.98); }
-      .it .art { position: relative; width: 100%; aspect-ratio: 1; margin-bottom: 10px; }
-      .it .t { font-weight: 600; font-size: 13.5px; letter-spacing: -.015em; }
-      .it .s { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+      .it { display: block; width: ${CARD}px; text-align: left; border-radius: 6px; padding: 6px; margin: -6px; transition: background .12s var(--ease), transform .2s var(--spring); }
+      .it:hover { background: var(--hover); }
+      .it:active { transform: scale(.985); }
+      .it .art { position: relative; width: 100%; aspect-ratio: 1; margin-bottom: 8px; }
+      .it .t { font-weight: 500; font-size: 13px; color: var(--ink); }
+      .it .s { color: var(--muted); font-size: 12px; margin-top: 1px; }
       .it .c { text-align: center; }
-      .it.active .t { color: var(--signal); }
-      .it .go { position: absolute; right: 8px; bottom: 8px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--on-ink); box-shadow: var(--lift-hi); opacity: 0; transform: translateY(6px); transition: opacity .2s var(--ease), transform .35s var(--spring); }
+      .it.active .t { color: var(--peri-t); }
+      .it .go { position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px; border-radius: 5px; display: grid; place-items: center; background: var(--signal); color: #fff; box-shadow: var(--lift-hi); opacity: 0; transform: translateY(4px); transition: opacity .15s var(--ease), transform .25s var(--spring); }
       .it:hover .go, .it:focus-visible .go, .it.active .go { opacity: 1; transform: none; }
-      @media (max-width: 900px) { .it { width: 138px; } }
+      @media (max-width: 900px) { .it { width: 128px; } }
     `}</style>
   );
 }
@@ -103,7 +103,7 @@ export function ShelfSkeleton({ title = true }: { title?: boolean }) {
       <div className="hscroll">
         {Array.from({ length: 7 }).map((_, i) => (
           <div key={i} style={{ width: CARD }}>
-            <div className="skeleton" style={{ width: CARD, height: CARD, borderRadius: 12, marginBottom: 10 }} />
+            <div className="skeleton" style={{ width: CARD, height: CARD, borderRadius: 6, marginBottom: 10 }} />
             <div className="skeleton" style={{ width: 110, height: 13, borderRadius: 5 }} />
           </div>
         ))}
@@ -146,7 +146,7 @@ export function TrackRow({
       }}
     >
       {showIndex && <span className="idx">{active && playing ? <Bars /> : index + 1}</span>}
-      {showArt && <Cover src={track.thumb} size={44} radius={8} />}
+      {showArt && <Cover src={track.thumb} size={30} radius={4} />}
       <div className="grow">
         <div className="tt clamp1">
           {track.title}
@@ -190,20 +190,20 @@ export function TrackRow({
         <Icon name="more" size={18} />
       </button>
       <style jsx>{`
-        .trow { display: flex; align-items: center; gap: 14px; padding: 7px 12px; border-radius: 12px; cursor: pointer; transition: background .2s var(--ease); }
-        .trow:hover { background: var(--surface); }
+        .trow { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 0; cursor: pointer; transition: background .12s var(--ease); }
+        .trow:hover { background: var(--hover); }
         .trow.active { background: var(--signal-soft); }
-        .idx { width: 22px; text-align: center; color: var(--muted); font-size: 13px; font-weight: 500; }
-        .tt { font-weight: 500; font-size: 14px; letter-spacing: -.012em; }
-        .trow.active .tt { color: var(--signal); }
-        .ta { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
+        .idx { width: 22px; text-align: right; color: var(--muted); font-size: 12px; }
+        .tt { font-weight: 400; font-size: 13px; color: var(--ink); }
+        .trow.active .tt { color: var(--peri-t); }
+        .ta { color: var(--muted); font-size: 12px; margin-top: 0; }
         .ta :global(a:hover) { color: var(--text); text-decoration: underline; }
-        .e { display: inline-grid; place-items: center; width: 15px; height: 15px; font-size: 9.5px; font-weight: 700; border-radius: 4px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-2); color: var(--muted); margin-left: 8px; vertical-align: 1px; }
-        .dur { width: 42px; text-align: right; color: var(--muted); font-size: 12.5px; }
+        .e { display: inline-grid; place-items: center; width: 14px; height: 14px; font-size: 9px; font-weight: 600; border-radius: 3px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border-2); color: var(--muted); margin-left: 8px; vertical-align: 1px; }
+        .dur { width: 42px; text-align: right; color: var(--muted); font-size: 12px; }
         .like { opacity: 0; color: var(--muted); }
         .trow:hover .like, .like.on, .trow:focus-within .like { opacity: 1; }
-        .like.on { color: var(--signal); }
-        @media (max-width: 900px) { .dur { display: none; } .like { display: none; } .trow { gap: 12px; padding: 7px 4px; } }
+        .like.on { color: var(--peri-t); }
+        @media (max-width: 900px) { .dur { display: none; } .like { display: none; } .trow { gap: 10px; padding: 0 8px; } }
       `}</style>
     </div>
   );

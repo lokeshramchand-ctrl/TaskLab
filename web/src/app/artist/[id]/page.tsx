@@ -8,7 +8,6 @@ import { Icon } from '@/components/Icon';
 import { useLibrary } from '@/player/library';
 import { usePlayer } from '@/player/store';
 import { useSettings } from '@/player/settings';
-import { useTint } from '@/lib/tint';
 
 export default function ArtistPage({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent(use(params).id);
@@ -17,52 +16,45 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
   const following = useLibrary((s) => !!s.artists[id]);
   const [bioOpen, setBioOpen] = useState(false);
   const [allSongs, setAllSongs] = useState(false);
-  const tint = useTint(data?.image ?? data?.thumb);
   if (isLoading) return <PageSkeleton />;
   if (error || !data) return <PageError error={error} retry={() => refetch()} />;
 
   const photo = data.image ?? data.thumb;
   const facts = [data.genre, data.origin, data.since && `since ${data.since}`, data.subscribers].filter(Boolean);
   return (
-    <div className="fade-in dh-page" style={tint ? ({ ['--tint' as string]: tint } as React.CSSProperties) : undefined}>
-      <div className="dh-wash" aria-hidden />
-      <header className="dh">
-        <div className="dh-art round">
+    <div className="fade-in ph-page">
+      <header className="ph-head">
+        <div className="ph-art round">
           <Avatar src={photo} size="100%" alt={data.name} />
         </div>
-        <h1 className="dh-title clamp2">{data.name}</h1>
-        {facts.length > 0 && <div className="dh-sub" style={{ fontSize: 14, fontWeight: 500 }}>{facts.join(' · ')}</div>}
-        <div className="dh-actions">
-          <button
-            className="dh-round"
-            aria-label="Shuffle"
-            disabled={!data.topSongs.length}
-            onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}`, shuffle: true })}
-          >
-            <Icon name="shuffle" size={20} />
-          </button>
-          <button className="dh-play" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}` })}>
-            <Icon name="play" size={16} /> Play
-          </button>
-          <button
-            className="dh-round"
-            aria-label={following ? 'Unfollow' : 'Follow'}
-            onClick={() => useLibrary.getState().toggleSaved({ kind: 'artist', id, title: data.name, thumb: photo })}
-          >
-            <Icon name={following ? 'check' : 'plus'} size={20} />
-          </button>
-          {data.topSongs[0] && (
-            <button className="dh-round" aria-label="Start radio" onClick={() => usePlayer.getState().playRadio(data.topSongs[0])}>
-              <Icon name="radio" size={20} />
+        <div className="ph-info">
+          <div className="ph-kind">Artist</div>
+          <h1 className="ph-title clamp2">{data.name}</h1>
+          {facts.length > 0 && <div className="ph-sub">{facts.join(' · ')}</div>}
+          <div className="ph-actions">
+            <button className="btn primary lg" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}` })}>
+              <Icon name="play" size={12} /> Play
             </button>
-          )}
+            <button className="btn lg" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}`, shuffle: true })}>
+              <Icon name="shuffle" size={14} /> Shuffle
+            </button>
+            {data.topSongs[0] && (
+              <button className="btn lg" onClick={() => usePlayer.getState().playRadio(data.topSongs[0])}>
+                <Icon name="radio" size={14} /> Radio
+              </button>
+            )}
+            <button className="btn lg" onClick={() => useLibrary.getState().toggleSaved({ kind: 'artist', id, title: data.name, thumb: photo })}>
+              <Icon name={following ? 'check' : 'plus'} size={14} /> {following ? 'Following' : 'Follow'}
+            </button>
+          </div>
         </div>
       </header>
 
       {data.topSongs.length > 0 && (
-        <section>
-          <div className="section-head">
-            <h2>Top songs</h2>
+        <section className="list">
+          <div className="group-head">
+            <Icon name="st-progress" size={12} />
+            <span className="grow">Top songs<span className="count">{data.topSongs.length}</span></span>
             {data.topSongs.length > 5 && (
               <button className="btn ghost sm" onClick={() => setAllSongs(!allSongs)}>
                 {allSongs ? 'Show less' : `Show all ${data.topSongs.length}`}

@@ -6,7 +6,6 @@ import { usePlayer } from '@/player/store';
 import { Cover } from './Art';
 import { Icon } from './Icon';
 import { TrackRow } from './Cards';
-import { useTint } from '@/lib/tint';
 
 /** Shared header + tracklist for albums and playlists. */
 export function Collection({
@@ -41,50 +40,59 @@ export function Collection({
   heading?: React.ReactNode;
 }) {
   const [more, setMore] = useState(false);
-  const tint = useTint(thumb);
   return (
-    <div className="fade-in dh-page" style={tint ? ({ ['--tint' as string]: tint } as React.CSSProperties) : undefined}>
-      <div className="dh-wash" aria-hidden />
-      <header className="dh">
-        <div className="dh-art">{cover ?? <Cover src={thumb} size="100%" radius={16} />}</div>
-        {heading ?? <h1 className="dh-title clamp2">{title}</h1>}
-        {artists && artists.length > 0 && (
-          <div className="dh-sub">
-            {artists.map((a, i) => (
-              <span key={i}>
-                {i > 0 && ', '}
-                {a.id ? <Link href={`/artist/${a.id}`}>{a.name}</Link> : a.name}
-              </span>
-            ))}
+    <div className="fade-in ph-page">
+      <header className="ph-head">
+        <div className="ph-art">{cover ?? <Cover src={thumb} size="100%" radius={6} />}</div>
+        <div className="ph-info">
+          <div className="ph-kind">{kind}</div>
+          {heading ?? <h1 className="ph-title clamp2">{title}</h1>}
+          {artists && artists.length > 0 && (
+            <div className="ph-sub">
+              {artists.map((a, i) => (
+                <span key={i}>
+                  {i > 0 && ', '}
+                  {a.id ? <Link href={`/artist/${a.id}`}>{a.name}</Link> : a.name}
+                </span>
+              ))}
+              {meta && <span> · {meta}</span>}
+            </div>
+          )}
+          {!artists?.length && meta && <div className="ph-sub">{meta}</div>}
+          {description && (
+            <div>
+              <p className={`ph-desc${more ? '' : ' clamp2'}`}>{description}</p>
+              {description.length > 140 && (
+                <button className="ph-more" onClick={() => setMore(!more)}>
+                  {more ? 'Show less' : 'More'}
+                </button>
+              )}
+            </div>
+          )}
+          <div className="ph-actions">
+            <button className="btn primary lg" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source })}>
+              <Icon name="play" size={12} /> Play
+            </button>
+            <button className="btn lg" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source, shuffle: true })}>
+              <Icon name="shuffle" size={14} /> Shuffle
+            </button>
+            {actions}
           </div>
-        )}
-        {meta && <div className="dh-meta">{[kind, meta].join(' · ')}</div>}
-        <div className="dh-actions">
-          <button className="dh-round" aria-label="Shuffle" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source, shuffle: true })}>
-            <Icon name="shuffle" size={20} />
-          </button>
-          <button className="dh-play" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source })}>
-            <Icon name="play" size={16} /> Play
-          </button>
-          {actions}
         </div>
-        {description && (
-          <div>
-            <p className={`dh-desc${more ? '' : ' clamp2'}`}>{description}</p>
-            {description.length > 140 && (
-              <button className="dh-more" onClick={() => setMore(!more)}>
-                {more ? 'Show less' : 'More'}
-              </button>
-            )}
-          </div>
-        )}
       </header>
       {!tracks.length && empty}
-      <div className="dh-list">
-        {tracks.map((t, i) => (
-          <TrackRow key={`${t.id}-${i}`} track={t} index={i} list={tracks} showIndex={numbered} showArt={!numbered} playlistId={playlistId} />
-        ))}
-      </div>
+      {tracks.length > 0 && (
+        <div className="list">
+          <div className="group-head">
+            <Icon name="st-todo" size={12} />
+            <span>Songs</span>
+            <span className="count">{tracks.length}</span>
+          </div>
+          {tracks.map((t, i) => (
+            <TrackRow key={`${t.id}-${i}`} track={t} index={i} list={tracks} showIndex={numbered} showArt={!numbered} playlistId={playlistId} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -108,8 +116,8 @@ export function PageError({ error, retry }: { error: unknown; retry?: () => void
 
 export function PageSkeleton() {
   return (
-    <div className="card pad" style={{ display: 'flex', gap: 28, alignItems: 'flex-end' }}>
-      <div className="skeleton" style={{ width: 208, height: 208, borderRadius: 14 }} />
+    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-end' }}>
+      <div className="skeleton" style={{ width: 136, height: 136, borderRadius: 6 }} />
       <div style={{ flex: 1 }}>
         <div className="skeleton" style={{ width: '55%', height: 38, borderRadius: 8 }} />
         <div className="skeleton" style={{ width: '25%', height: 16, borderRadius: 6, marginTop: 14 }} />

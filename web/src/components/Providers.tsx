@@ -17,11 +17,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={qc}>
       <AuthGate>
-        <div className="app" style={mini ? ({ ['--side-w' as string]: '72px' } as React.CSSProperties) : undefined}>
+        <div className="app" style={mini ? ({ ['--side-w' as string]: '56px' } as React.CSSProperties) : undefined}>
           <Sidebar />
           <div className="col">
-            <Topbar />
-            <main className="content">{children}</main>
+            <div className="panel">
+              <Topbar />
+              <main className="content">{children}</main>
+            </div>
           </div>
           <PlayerBar />
           <MobileTabs />
@@ -32,7 +34,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ToastHost />
       </AuthGate>
       <style jsx>{`
-        .col { min-width: 0; display: flex; flex-direction: column; }
       `}</style>
     </QueryClientProvider>
   );

@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 
 const config: NextConfig = {
+  // Lets a second dev server (screenshots, e2e) run beside the main one without sharing a build cache.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // Self-contained server bundle for the Docker image (Coolify).
   output: 'standalone',
   serverExternalPackages: ['youtubei.js', 'jsdom', 'bgutils-js', '@napi-rs/canvas'],
