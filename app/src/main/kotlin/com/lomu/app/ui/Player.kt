@@ -59,8 +59,8 @@ private fun playerTint(c: Color?): Color? {
     c ?: return null
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(android.graphics.Color.argb(255, (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt()), hsv)
-    hsv[1] = hsv[1].coerceAtLeast(0.8f)
-    hsv[2] = hsv[2].coerceIn(0.62f, 0.9f)
+    hsv[1] = hsv[1].coerceAtLeast(0.92f)
+    hsv[2] = hsv[2].coerceIn(0.7f, 1f)
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
@@ -122,8 +122,8 @@ private fun FullPlayerContent(onClose: () -> Unit) {
     Box(Modifier.fillMaxSize().graphicsLayer { translationY = dragY.value; alpha = 1f - (dragY.value / (size.height * 2f)).coerceIn(0f, 0.4f) }.background(lo.bg)) {
         // Strong colour wash taken from the artwork; it cross-fades slowly when the song changes.
         val tint by animateColorAsState(playerTint(rememberTint(m?.thumbnailUrl)) ?: lo.bg, tween(900), label = "playerTint")
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tint, 0.65f to tint.copy(alpha = 0.8f).compositeOver(lo.bg), 1f to lo.bg)))
-        Ambient(m?.thumbnailUrl, height = 900.dp, strength = 0.7f)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tint, 0.75f to tint.copy(alpha = 0.92f).compositeOver(lo.bg), 1f to lo.bg)))
+        Ambient(m?.thumbnailUrl, height = 900.dp, strength = 0.85f)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
             // grabber
             // The bar at the top: tap or pull down to close. The hit area is much taller than the bar itself.

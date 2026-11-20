@@ -192,19 +192,13 @@ fun DevicesSheet(onDismiss: () -> Unit) {
             Box(Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(5.dp).background(lo.grey.copy(alpha = 0.5f), RoundedCornerShape(3.dp)))
             Spacer(Modifier.height(14.dp))
             Text("Connect to a device", style = LoType.title.copy(fontSize = 20.sp), color = lo.ink)
-            if (!state.online) Text("Offline. Reconnecting…", style = LoType.small, color = lo.grey, modifier = Modifier.padding(top = 4.dp))
+            if (!state.online) Text("Offline", style = LoType.small, color = lo.grey, modifier = Modifier.padding(top = 4.dp))
             Spacer(Modifier.height(10.dp))
             DeviceRow(Icons.Rounded.PhoneAndroid, "This phone", if (localActive) "Playing here" else "Tap to play here", localActive, false) { c.transferTo(c.selfId); sheet.dismiss() }
             others.forEach { d ->
                 Hairline(44.dp)
                 val on = remote?.id == d.id
                 DeviceRow(deviceIcon(d), d.name, (if (d.playing) "Playing" else if (d.track != null) "Paused" else "Idle") + (d.track?.let { " · ${it.title}" } ?: ""), on, d.playing) { c.transferTo(d.id); sheet.dismiss() }
-            }
-            if (others.isEmpty()) {
-                Text(
-                    "Open LoMu in a browser and sign in with the same account. It shows up here, and you can play and control it from this phone.",
-                    style = LoType.small, color = lo.grey, textAlign = TextAlign.Start, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
-                )
             }
     }
 }
