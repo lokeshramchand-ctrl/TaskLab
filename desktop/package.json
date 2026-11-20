@@ -1,0 +1,29 @@
+{
+  "name": "lomu-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LoMu for Windows: the web player plus its own local server, so it keeps working with the home server off.",
+  "main": "main.js",
+  "author": "LoMu",
+  "scripts": {
+    "prepare-server": "node scripts/prepare.mjs",
+    "start": "electron .",
+    "dev": "node scripts/prepare.mjs --skip-build && electron .",
+    "pack": "node scripts/prepare.mjs && electron-builder --dir",
+    "dist": "node scripts/prepare.mjs && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.lomu.desktop",
+    "productName": "LoMu",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "package.json", "build/icon.png"],
+    "extraResources": [{ "from": "build/server", "to": "server", "filter": ["**/*", "node_modules/**/*", "**/node_modules/**/*"] }],
+    "asar": true,
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.png" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true }
+  }
+}

@@ -107,7 +107,7 @@ export function Sidebar() {
   const setMini = useSettings((s) => s.setSideMini);
   const playlists = useLibrary((s) => s.playlists);
   const likedCount = useLibrary((s) => Object.keys(s.liked).length);
-  const { user, sync, logout } = useAuth();
+  const { user, sync, logout, local } = useAuth();
   const [lists, setLists] = useState(true);
 
   return (
@@ -169,9 +169,11 @@ export function Sidebar() {
                 {sync === 'live' ? 'Synced' : sync === 'syncing' ? 'Syncing…' : sync === 'error' ? 'Offline' : 'Local'}
               </div>
             </div>
-            <button className="icon-btn sm" aria-label="Sign out" title="Sign out" onClick={() => logout()}>
-              <Icon name="logout" size={14} />
-            </button>
+            {!local && (
+              <button className="icon-btn sm" aria-label="Sign out" title="Sign out" onClick={() => logout()}>
+                <Icon name="logout" size={14} />
+              </button>
+            )}
           </div>
         )}
       </div>

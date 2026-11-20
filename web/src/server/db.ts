@@ -27,6 +27,8 @@ export function db(): DatabaseSync {
       PRIMARY KEY (kind, key)
     );
     CREATE INDEX IF NOT EXISTS docs_seq ON docs (seq);
+    -- Last good answer for catalogue pages and recommendations, served when YouTube cannot be reached.
+    CREATE TABLE IF NOT EXISTS cache (k TEXT PRIMARY KEY, v TEXT NOT NULL, at INTEGER NOT NULL);
   `);
   g.__lomuDb = d;
   return d;

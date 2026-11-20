@@ -62,6 +62,42 @@ export function push(docs: Doc[]): { seq: number; applied: number } {
   return { seq, applied };
 }
 
+/**
+ * Applies documents that came from another server (the sync hub). Same last-write-wins rule as [push], but an
+ * equal timestamp counts as already known, so a write that bounces back is not applied twice.
+ * Returns the local seq before and after, so the caller can tell its own bookkeeping apart from new local edits.
+ */
+export function applyRemote(rows: { kind: string; key: string; value: unknown | null; updated: number; deleted?: boolean }[]): { before: number; after: number; applied: number } {
+  const d = db();
+  const before = currentSeq();
+  let seq = before;
+  let applied = 0;
+  const get = d.prepare('SELECT updated FROM docs WHERE kind = ? AND key = ?');
+  const put = d.prepare(
+    `INSERT INTO docs (kind, key, value, updated, deleted, seq) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(kind, key) DO UPDATE SET value = excluded.value, updated = excluded.updated, deleted = excluded.deleted, seq = excluded.seq`,
+  );
+  d.exec('BEGIN');
+  try {
+    for (const r of rows) {
+      if (!KINDS.has(r.kind) || typeof r.key !== 'string' || !r.key || r.key.length > 200) continue;
+      const updated = Number(r.updated) || 0;
+      const cur = get.get(r.kind, r.key) as { updated: number } | undefined;
+      if (cur && cur.updated >= updated) continue;
+      const json = r.deleted || r.value == null ? null : JSON.stringify(r.value);
+      if (json && json.length > 200_000) continue;
+      put.run(r.kind, r.key, json, updated, r.deleted || json === null ? 1 : 0, ++seq);
+      applied++;
+    }
+    d.exec('COMMIT');
+  } catch (e) {
+    d.exec('ROLLBACK');
+    throw e;
+  }
+  if (applied) bus.emit('seq', seq);
+  return { before, after: seq, applied };
+}
+
 /** All live docs of a kind (used by the recommendation engine). */
 export function all(kind: string, limit = 5000): { key: string; value: any; updated: number }[] {
   return (db()

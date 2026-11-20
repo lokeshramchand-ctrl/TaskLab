@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLibrary } from '@/player/library';
 import { usePlayer } from '@/player/store';
@@ -16,7 +16,7 @@ export default function SettingsPage() {
   const dev = useSettings((s) => s.dev);
   const setDev = useSettings((s) => s.setDev);
   const autoplay = usePlayer((s) => s.autoplay);
-  const { user, sync, lastSync, logout } = useAuth();
+  const { user, sync, lastSync, logout, local } = useAuth();
   const [confirmClear, setConfirmClear] = useState(false);
   const exportLibrary = () => {
     const { liked, history, playlists, albums, artists, savedPlaylists, recentSearches } = useLibrary.getState();
@@ -38,7 +38,8 @@ export default function SettingsPage() {
   return (
     <Bento className="fade-in">
       <PageHeader eyebrow="Settings" title="Settings" sub="Account, appearance, playback and the things you can turn on or off." />
-        <Group kicker={nk()} span={7} title="Account" sub="One owner account. It syncs likes, playlists and history to your other devices.">
+        {local && <HubGroup kicker={nk()} />}
+        {!local && <Group kicker={nk()} span={7} title="Account" sub="One owner account. It syncs likes, playlists and history to your other devices.">
           <Row
             icon="user"
             label={user ? `Signed in as ${user}` : 'Not signed in'}
@@ -48,7 +49,7 @@ export default function SettingsPage() {
               <Icon name="logout" size={16} /> Sign out
             </button>
           </Row>
-        </Group>
+        </Group>}
 
         <Group kicker={nk()} span={5} title="Appearance">
           <Row icon="sun" label="Interface theme" hint="Select or customise your interface colour scheme.">
@@ -122,6 +123,78 @@ export default function SettingsPage() {
           </Row>
         </Group>
     </Bento>
+  );
+}
+
+type Hub = { local: boolean; url: string | null; user: string | null; state: 'off' | 'syncing' | 'online' | 'offline' | 'error'; lastSync: number | null; pending: number; error: string | null };
+
+/** Desktop app: connection to the home server that keeps this PC, the phone and the browser in step. */
+function HubGroup({ kicker }: { kicker: string }) {
+  const [hub, setHub] = useState<Hub | null>(null);
+  const [url, setUrl] = useState('https://lomu.deploy-ui.lokeshrc.me');
+  const [u, setU] = useState('');
+  const [p, setP] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    const load = () => fetch('/api/hub', { cache: 'no-store' }).then((r) => r.json()).then((h) => live && setHub(h)).catch(() => {});
+    load();
+    const t = setInterval(load, 4000);
+    return () => { live = false; clearInterval(t); };
+  }, []);
+
+  const call = async (method: string, body?: unknown) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await fetch('/api/hub', { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      const j = await r.json();
+      if (!r.ok) setErr(j.error ?? 'Something went wrong');
+      else { setHub(j); setP(''); }
+    } finally { setBusy(false); }
+  };
+
+  const connected = !!hub?.url;
+  const label = !connected ? 'Not connected' : hub!.state === 'online' ? 'Up to date' : hub!.state === 'syncing' ? 'Syncing…' : hub!.state === 'offline' ? 'Home server unreachable' : 'Problem';
+  const hint = !connected
+    ? 'This PC works on its own. Connect your home server to share likes, playlists and history with your phone.'
+    : hub!.state === 'offline'
+      ? `Everything is saved on this PC and will sync when ${new URL(hub!.url!).host} is back${hub!.pending ? ` (${hub!.pending} changes waiting)` : ''}.`
+      : hub!.state === 'error'
+        ? hub!.error ?? 'Sync failed.'
+        : `${hub!.user} on ${new URL(hub!.url!).host}${hub!.lastSync ? ` · last sync ${new Date(hub!.lastSync).toLocaleTimeString()}` : ''}${hub!.pending ? ` · ${hub!.pending} waiting` : ''}`;
+
+  return (
+    <Group kicker={kicker} span={7} title="Home server" sub="Your library lives on this PC. The home server only keeps your devices in step, so a power cut there never stops the music.">
+      <Row icon="user" label={label} hint={hint}>
+        {connected && (
+          <span className="row" style={{ gap: 8 }}>
+            <button className="btn sm" disabled={busy} onClick={() => call('POST', { action: 'sync' })}>Sync now</button>
+            <button className="btn sm" disabled={busy} onClick={() => call('DELETE')}>Disconnect</button>
+          </span>
+        )}
+      </Row>
+      {(!connected || hub?.state === 'error') && (
+        <form
+          className="hubform"
+          onSubmit={(e) => { e.preventDefault(); call('POST', { url, username: u, password: p }); }}
+        >
+          <input placeholder="Server address" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <input placeholder="Username" autoComplete="username" value={u} onChange={(e) => setU(e.target.value)} />
+          <input type="password" placeholder="Password" autoComplete="current-password" value={p} onChange={(e) => setP(e.target.value)} />
+          <button className="btn primary" disabled={busy || !u || !p || !url}>{busy ? 'Connecting…' : 'Connect'}</button>
+          {err && <div className="err">{err}</div>}
+        </form>
+      )}
+      <style jsx>{`
+        .hubform { display: flex; flex-wrap: wrap; gap: 8px; padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--border); }
+        .hubform input { flex: 1 1 160px; height: 32px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; outline: none; }
+        .hubform input:focus { border-color: var(--signal); }
+        .err { flex-basis: 100%; color: var(--red-t); font-size: 13px; background: var(--red-soft); padding: 8px 10px; border-radius: 5px; }
+      `}</style>
+    </Group>
   );
 }
 

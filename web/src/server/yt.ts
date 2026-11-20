@@ -3,6 +3,7 @@ import vm from 'node:vm';
 import os from 'node:os';
 import path from 'node:path';
 import { Innertube, Platform, Log, UniversalCache } from 'youtubei.js';
+import { db } from './db';
 
 // youtubei.js needs a JS runtime to run YouTube's stream-URL transform. It is
 // evaluated in an isolated vm context with a hard timeout so player code never
@@ -53,14 +54,54 @@ export function resetYt() {
 type Entry = { at: number; ttl: number; value: unknown };
 const memo: Map<string, Entry> = ((globalThis as any).__lomuMemo ??= new Map());
 
+/**
+ * Memoises [fn] for [ttlMs]. Every good answer is also kept in the database, and if [fn] fails later (no internet,
+ * YouTube refusing) the last good answer is served instead, however old: a page that was seen once still opens.
+ */
 export async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
   const hit = memo.get(key);
   if (hit && Date.now() - hit.at < hit.ttl) return hit.value as T;
-  const value = await fn();
+  let value: T;
+  try {
+    value = await fn();
+  } catch (e) {
+    const old = readStale<T>(key);
+    if (old !== undefined) return old;
+    throw e;
+  }
+  writeStale(key, value);
   memo.set(key, { at: Date.now(), ttl: ttlMs, value });
   if (memo.size > 800) {
     const oldest = [...memo.entries()].sort((a, b) => a[1].at - b[1].at).slice(0, 200);
     for (const [k] of oldest) memo.delete(k);
   }
   return value;
+}
+
+// ---- last-good-answer store (see cached)
+
+export function readStale<T>(key: string): T | undefined {
+  try {
+    const row = db().prepare('SELECT v FROM cache WHERE k = ?').get(key) as { v: string } | undefined;
+    return row ? (JSON.parse(row.v) as T) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+let writes = 0;
+export function writeStale(key: string, value: unknown) {
+  try {
+    const json = JSON.stringify(value);
+    if (!json || json.length > 2_000_000) return;
+    const d = db();
+    d.prepare('INSERT INTO cache (k, v, at) VALUES (?, ?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, at = excluded.at').run(key, json, Date.now());
+    // Keep it bounded: forget answers nobody has refreshed for a month, and cap the row count.
+    if (++writes % 200 === 0) {
+      d.prepare('DELETE FROM cache WHERE at < ?').run(Date.now() - 30 * 86400_000);
+      d.prepare('DELETE FROM cache WHERE k NOT IN (SELECT k FROM cache ORDER BY at DESC LIMIT 3000)').run();
+    }
+  } catch {
+    /* the cache is best-effort */
+  }
 }

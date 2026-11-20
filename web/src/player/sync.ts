@@ -15,6 +15,7 @@ type AuthState = {
   status: 'loading' | 'setup' | 'login' | 'ready';
   user: string | null;
   needsCode: boolean;
+  local: boolean; // Windows desktop app: its own server, no login screen, sync goes through the hub
   error: string | null;
   sync: 'off' | 'syncing' | 'live' | 'error';
   lastSync: number | null;
@@ -27,13 +28,15 @@ export const useAuth = create<AuthState>((set, get) => ({
   status: 'loading',
   user: null,
   needsCode: false,
+  local: false,
   error: null,
   sync: 'off',
   lastSync: null,
   async refresh() {
     try {
       const r = await fetch('/api/auth/status', { cache: 'no-store' });
-      const s = (await r.json()) as { setup: boolean; user: string | null; needsCode?: boolean };
+      const s = (await r.json()) as { setup: boolean; user: string | null; needsCode?: boolean; local?: boolean };
+      set({ local: !!s.local });
       if (!s.setup) return set({ status: 'setup', user: null, needsCode: !!s.needsCode });
       if (s.user) {
         set({ status: 'ready', user: s.user });

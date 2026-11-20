@@ -2,7 +2,7 @@ import 'server-only';
 import type { Shelf, Track } from '@/lib/types';
 import { all } from './sync';
 import { radio } from './catalog';
-import { cached } from './yt';
+import { cached, readStale } from './yt';
 import { affinity, diversify, rankCandidates, type PlayDoc, type LikeDoc } from './recs-core';
 
 /* Server-side recommendations, shared by the web player and the phone. Signals come from the
@@ -12,18 +12,20 @@ import { affinity, diversify, rankCandidates, type PlayDoc, type LikeDoc } from 
 const SEEDS = 5;
 const PER_SEED = 30;
 
-async function candidatesFor(seeds: Track[]): Promise<Map<string, Track[]>> {
-  const out = new Map<string, Track[]>();
+async function candidatesFor(seeds: Track[]): Promise<{ map: Map<string, Track[]>; ok: number }> {
+  const map = new Map<string, Track[]>();
+  let ok = 0;
   await Promise.all(
     seeds.map(async (s) => {
       try {
-        out.set(s.id, (await radio(s.id)).filter((t) => t.id !== s.id).slice(0, PER_SEED));
+        map.set(s.id, (await radio(s.id)).filter((t) => t.id !== s.id).slice(0, PER_SEED));
+        ok++;
       } catch {
-        out.set(s.id, []);
+        map.set(s.id, []);
       }
     }),
   );
-  return out;
+  return { map, ok };
 }
 
 export function buildMixes(): Promise<Shelf[]> {
@@ -36,7 +38,9 @@ export function buildMixes(): Promise<Shelf[]> {
     const now = Date.now();
     const aff = affinity(plays, likes, now);
     const seeds = aff.topTracks.slice(0, SEEDS);
-    const cands = await candidatesFor(seeds);
+    const { map: cands, ok } = await candidatesFor(seeds);
+    // Nothing reachable (offline): throw, so `cached` serves the last full set instead of a thin one.
+    if (!ok && seeds.length && readStale('recs:mixes')) throw new Error('YouTube unreachable');
     const ranked = rankCandidates(seeds, cands, aff);
 
     const shelves: Shelf[] = [];

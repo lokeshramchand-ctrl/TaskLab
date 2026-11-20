@@ -111,9 +111,29 @@ export async function clearAuthCookies() {
   c.delete('lomu_rt');
 }
 
+/** True inside the Windows desktop app, which runs this server for itself on 127.0.0.1. */
+export const isLocalMode = () => !!process.env.LOMU_LOCAL_TOKEN;
+
+/**
+ * Desktop app: the app shell adds a per-launch secret header to every request it makes to its own server,
+ * so there is no login screen. Nothing else on the machine knows the secret.
+ */
+function localOwner(h: Headers): string | null {
+  const want = process.env.LOMU_LOCAL_TOKEN;
+  const got = h.get('x-lomu-local');
+  if (!want || !got) return null;
+  const a = Buffer.from(got);
+  const b = Buffer.from(want);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  if (!hasOwner()) createOwner('local', crypto.randomBytes(24).toString('hex'));
+  return (db().prepare('SELECT username FROM owner WHERE id = 1').get() as { username: string }).username;
+}
+
 /** Returns the signed-in owner, or null. Reads the Bearer header first, then the cookie. */
 export async function currentUser(): Promise<string | null> {
   const h = await headers();
+  const local = localOwner(h);
+  if (local) return local;
   const bearer = h.get('authorization')?.match(/^Bearer (.+)$/i)?.[1];
   const c = await cookies();
   const v = verify(bearer ?? c.get('lomu_at')?.value);

@@ -18,6 +18,7 @@ export function home(): Promise<HomeData> {
       client.music.getHomeFeed().catch(() => null),
       exploreRaw().catch(() => null),
     ]);
+    if (!feed && !explore) throw new Error('YouTube unreachable'); // lets `cached` serve the last good page
     const shelves: Shelf[] = compact((feed?.sections ?? []).map(toShelf));
     // Anonymous home feeds are thin; fill with explore shelves (new releases, trending, videos).
     for (const s of compact((explore?.sections ?? []).map(toShelf))) {
