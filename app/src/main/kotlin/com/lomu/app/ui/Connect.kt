@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -73,7 +74,7 @@ fun RemoteMiniPlayer(d: Dev, onOpen: () -> Unit, modifier: Modifier = Modifier) 
                 Text(d.name, style = LoType.small.copy(fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Medium), color = lo.signal, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        IconBtnV(if (d.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, { c.send(d.id, "toggle") }, size = 44.dp, iconSize = 28.dp)
+        PlayPauseBtn(d.playing, { c.send(d.id, "toggle") }, size = 44.dp, iconSize = 28.dp)
         IconBtnV(Icons.Rounded.FastForward, { c.send(d.id, "next") }, size = 44.dp, iconSize = 28.dp)
     }
 }
@@ -90,19 +91,20 @@ fun RemotePlayer(d: Dev, onClose: () -> Unit) = CompositionLocalProvider(LocalLo
     val dur = d.duration
     val frac = drag ?: if (dur > 0) (pos / dur).toFloat().coerceIn(0f, 1f) else 0f
 
-    Box(Modifier.fillMaxSize().background(lo.bg)) {
+    val (dragY, dragMod) = rememberDismissDrag(onClose)
+    Box(Modifier.fillMaxSize().graphicsLayer { translationY = dragY.value; alpha = 1f - (dragY.value / (size.height * 2f)).coerceIn(0f, 0.4f) }.background(lo.bg)) {
         Ambient(m?.thumbnailUrl, height = 900.dp, strength = 0.78f)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
-            Box(Modifier.fillMaxWidth().padding(top = 10.dp).pressable(RoundedCornerShape(4.dp), onClick = onClose), Alignment.Center) {
+            Box(Modifier.fillMaxWidth().height(52.dp).then(dragMod).pressable(RoundedCornerShape(4.dp), onClick = onClose), Alignment.Center) {
                 Box(Modifier.width(36.dp).height(5.dp).background(lo.grey.copy(alpha = 0.6f), RoundedCornerShape(3.dp)))
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(4.dp))
             Row(Modifier.align(Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
                 IcV(deviceIcon(d), 16.dp, lo.signal)
                 Spacer(Modifier.width(6.dp))
                 Text("Playing on ${d.name}", style = LoType.sub.copy(fontWeight = FontWeight.SemiBold), color = lo.signal)
             }
-            Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+            Box(Modifier.weight(1f).fillMaxWidth().then(dragMod), Alignment.Center) {
                 BoxWithConstraints(Modifier.fillMaxSize(), Alignment.Center) {
                     val side = minOf(maxWidth, maxHeight)
                     Cover(m?.thumbnailUrl, side, radius = 14.dp)
@@ -137,7 +139,7 @@ fun RemotePlayer(d: Dev, onClose: () -> Unit) = CompositionLocalProvider(LocalLo
 
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 IconBtnV(Icons.Rounded.FastRewind, { c.send(d.id, "prev") }, size = 72.dp, iconSize = 52.dp)
-                IconBtnV(if (d.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, { c.send(d.id, "toggle") }, size = 84.dp, iconSize = 64.dp)
+                PlayPauseBtn(d.playing, { c.send(d.id, "toggle") }, size = 84.dp, iconSize = 64.dp)
                 IconBtnV(Icons.Rounded.FastForward, { c.send(d.id, "next") }, size = 72.dp, iconSize = 52.dp)
             }
 
@@ -180,29 +182,23 @@ fun RemotePlayer(d: Dev, onClose: () -> Unit) = CompositionLocalProvider(LocalLo
 @Composable
 fun DevicesSheet(onDismiss: () -> Unit) {
     val lo = LocalLo.current
+    val sheet = rememberSheetState(onDismiss)
     val c = LocalConnect.current ?: return
     val state by c.devices.collectAsState()
     val remote by c.remote.collectAsState()
     val localActive = remote == null
     val others = state.list.filter { it.id != c.selfId }
-    Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
-        Alignment.BottomCenter,
-    ) {
-        Column(
-            Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                .background(lo.card, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp),
-        ) {
+    SheetHost(sheet) {
             Box(Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(5.dp).background(lo.grey.copy(alpha = 0.5f), RoundedCornerShape(3.dp)))
             Spacer(Modifier.height(14.dp))
             Text("Connect to a device", style = LoType.title.copy(fontSize = 20.sp), color = lo.ink)
             if (!state.online) Text("Offline. Reconnecting…", style = LoType.small, color = lo.grey, modifier = Modifier.padding(top = 4.dp))
             Spacer(Modifier.height(10.dp))
-            DeviceRow(Icons.Rounded.PhoneAndroid, "This phone", if (localActive) "Playing here" else "Tap to play here", localActive, false) { c.transferTo(c.selfId); onDismiss() }
+            DeviceRow(Icons.Rounded.PhoneAndroid, "This phone", if (localActive) "Playing here" else "Tap to play here", localActive, false) { c.transferTo(c.selfId); sheet.dismiss() }
             others.forEach { d ->
                 Hairline(44.dp)
                 val on = remote?.id == d.id
-                DeviceRow(deviceIcon(d), d.name, (if (d.playing) "Playing" else if (d.track != null) "Paused" else "Idle") + (d.track?.let { " · ${it.title}" } ?: ""), on, d.playing) { c.transferTo(d.id); onDismiss() }
+                DeviceRow(deviceIcon(d), d.name, (if (d.playing) "Playing" else if (d.track != null) "Paused" else "Idle") + (d.track?.let { " · ${it.title}" } ?: ""), on, d.playing) { c.transferTo(d.id); sheet.dismiss() }
             }
             if (others.isEmpty()) {
                 Text(
@@ -210,7 +206,6 @@ fun DevicesSheet(onDismiss: () -> Unit) {
                     style = LoType.small, color = lo.grey, textAlign = TextAlign.Start, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
                 )
             }
-        }
     }
 }
 

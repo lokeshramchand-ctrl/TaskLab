@@ -421,7 +421,7 @@ fun LikedScreen() {
         }
         if (songs.isEmpty()) item { EmptyState(Ph.Heart, "No Liked Songs", "Tap the heart in the player to add songs here.") }
         itemsIndexed(songs) { i, s ->
-            MediaRow(s.song.title, s.artists.joinToString { it.name }, s.song.thumbnailUrl, active = now == s.song.id, flat = true, menu = MenuTarget(s.toMediaMetadata())) {
+            MediaRow(s.song.title, s.artists.joinToString { it.name }, s.song.thumbnailUrl, active = now == s.song.id, flat = true, modifier = Modifier.appear(i), menu = MenuTarget(s.toMediaMetadata())) {
                 player?.playMediaItems("Liked", songs.map { it.toMediaItem() }, i)
             }
         }
@@ -541,7 +541,7 @@ fun AlbumScreen(id: String) {
                     }
                 },
             ) {
-                itemsIndexed(page.songs) { i, s -> TrackRow(s, flat = true) { player?.playList(page.album.title, page.songs, i) } }
+                itemsIndexed(page.songs) { i, s -> TrackRow(s, flat = true, modifier = Modifier.appear(i)) { player?.playList(page.album.title, page.songs, i) } }
             }
         }
     }
@@ -569,7 +569,7 @@ fun PlaylistScreen(id: String) {
                     }
                 },
             ) {
-                itemsIndexed(page.songs) { i, s -> TrackRow(s, flat = true) { player?.playPlaylist(id, page.playlist.title, page.songs, page.songsContinuation, i) } }
+                itemsIndexed(page.songs) { i, s -> TrackRow(s, flat = true, modifier = Modifier.appear(i)) { player?.playPlaylist(id, page.playlist.title, page.songs, page.songsContinuation, i) } }
             }
         }
     }
@@ -601,7 +601,7 @@ fun ArtistScreen(id: String) {
                     if (songs.isNotEmpty() && songs.size == sec.items.size) {
                         Column {
                             CaptionedTitle(sec.title, null, "See All") { player?.playList(sec.title, songs) }
-                            songs.take(5).forEachIndexed { i, s -> TrackRow(s, flat = true) { player?.playList(sec.title, songs, i) } }
+                            songs.take(5).forEachIndexed { i, s -> TrackRow(s, flat = true, modifier = Modifier.appear(i)) { player?.playList(sec.title, songs, i) } }
                         }
                     } else Shelf(sec.title, sec.items)
                 }
@@ -639,7 +639,7 @@ fun LocalPlaylistScreen(id: String) {
         if (songs.isEmpty()) item { EmptyState(Ph.Playlist, "This playlist is empty") }
         itemsIndexed(songs) { i, s ->
             MediaRow(
-                s.song.song.title, s.song.artists.joinToString { it.name }, s.song.song.thumbnailUrl, active = now == s.song.song.id, flat = true,
+                s.song.song.title, s.song.artists.joinToString { it.name }, s.song.song.thumbnailUrl, active = now == s.song.song.id, flat = true, modifier = Modifier.appear(i),
                 menu = MenuTarget(s.song.toMediaMetadata(), "Remove from this Playlist") { player?.database?.let { d -> scope.launch(kotlinx.coroutines.Dispatchers.IO) { d.withTransaction { deletePlaylistSongMap(s.map.id) } } } },
             ) {
                 player?.playMediaItems("Playlist", items, i)

@@ -6,6 +6,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -19,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
@@ -85,15 +91,30 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
         if (menu != null) menu = null else if (showDevices) showDevices = false else if (showPlayer) showPlayer = false else nav.pop()
     }
     // Tab bar 58dp + gaps, plus the mini player capsule (48dp) when something is loaded.
-    val inset = (if (meta != null || remote != null) 138.dp else 82.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val hasPlayer = meta != null || remote != null
+    val insetBase by androidx.compose.animation.core.animateDpAsState(if (hasPlayer) 138.dp else 82.dp, tween(380, easing = IosEase), label = "inset")
+    val inset = insetBase + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     CompositionLocalProvider(LocalNav provides nav, LocalBottomInset provides inset, LocalOpenDevices provides { showDevices = true }, LocalTrackMenu provides { menu = it }) {
         Box(Modifier.fillMaxSize().background(lo.bg)) {
             AnimatedContent(
                 targetState = nav.current,
-                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) },
+                transitionSpec = {
+                    when (nav.op) {
+                        // Push: the new page slides in over the old one, which drifts left and dims (iOS / Apple Music).
+                        NavOp.Push -> (slideInHorizontally(tween(430, easing = IosEase)) { it } + fadeIn(tween(160)))
+                            .togetherWith(slideOutHorizontally(tween(430, easing = IosEase)) { -it / 4 } + fadeOut(tween(430), targetAlpha = 0.55f))
+                            .apply { targetContentZIndex = 1f }
+                        NavOp.Pop -> (slideInHorizontally(tween(430, easing = IosEase)) { -it / 4 } + fadeIn(tween(430), initialAlpha = 0.55f))
+                            .togetherWith(slideOutHorizontally(tween(380, easing = IosEase)) { it } + fadeOut(tween(260, delayMillis = 120)))
+                            .apply { targetContentZIndex = -1f }
+                        // Tabs: a quick cross-fade with the slightest settle.
+                        NavOp.Tab -> (fadeIn(tween(240, delayMillis = 60)) + scaleIn(tween(300, easing = IosEase), initialScale = 0.985f)) togetherWith fadeOut(tween(120))
+                    }
+                },
                 label = "screen",
                 modifier = Modifier.fillMaxSize(),
             ) { screen ->
+                Box(Modifier.fillMaxSize().background(lo.bg)) {
                 when (screen) {
                     Screen.Home -> HomeScreen()
                     Screen.New -> NewScreen()
@@ -108,21 +129,30 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
                     Screen.Liked -> LikedScreen()
                     Screen.Playlists -> PlaylistsScreen()
                 }
+                }
             }
+            // Swipe in from the left edge to go back.
+            if (nav.canPop && !showPlayer) Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().width(22.dp).edgeSwipeBack(true) { nav.pop() })
             // Soft fade so rows slide under the floating bars instead of being cut off.
             Box(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(inset + 8.dp)
                     .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, lo.bg.copy(alpha = 0.92f), lo.bg))),
             )
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp).padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (remote != null) RemoteMiniPlayer(remote, { showPlayer = true })
-                else if (meta != null) MiniPlayer({ showPlayer = true })
+                AnimatedVisibility(
+                    visible = hasPlayer,
+                    enter = slideInVertically(tween(450, easing = IosEase)) { it / 2 } + fadeIn(tween(250)) + scaleIn(spring(dampingRatio = 0.7f, stiffness = 300f), initialScale = 0.9f),
+                    exit = slideOutVertically(tween(300, easing = IosEase)) { it / 2 } + fadeOut(tween(200)),
+                ) {
+                    if (remote != null) RemoteMiniPlayer(remote, { showPlayer = true })
+                    else MiniPlayer({ showPlayer = true })
+                }
                 TabBar(nav)
             }
             AnimatedVisibility(
                 visible = showPlayer,
-                enter = slideInVertically(tween(320)) { it } + fadeIn(tween(200)),
-                exit = slideOutVertically(tween(260)) { it } + fadeOut(tween(200)),
+                enter = slideInVertically(tween(480, easing = IosEase)) { it } + fadeIn(tween(220)),
+                exit = slideOutVertically(tween(340, easing = IosEase)) { it } + fadeOut(tween(260)),
             ) { if (remote != null) RemotePlayer(remote) { showPlayer = false } else FullPlayer { showPlayer = false } }
             if (showDevices) DevicesSheet { showDevices = false }
             menu?.let { t -> TrackMenuSheet(t, { menu = null }) { s -> showPlayer = false; nav.push(s) } }
@@ -146,17 +176,20 @@ private fun TabBar(nav: Nav) {
         TabDef("Search", Icons.Rounded.Search, Icons.Rounded.Search, Screen.Search),
     )
     val shape = RoundedCornerShape(36.dp)
+    val haptic = rememberHaptic()
     Row(Modifier.fillMaxWidth().height(58.dp).glass(shape, lo).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
         tabs.forEach { t ->
             val active = nav.stack.first() == t.screen
-            val tint = if (active) lo.signal else lo.ink
+            val tint by animateColorAsState(if (active) lo.signal else lo.ink, tween(220), label = "tabTint")
+            val pill by animateColorAsState(if (active) lo.surface2 else Color.Transparent, tween(260), label = "tabPill")
+            val pop by androidx.compose.animation.core.animateFloatAsState(if (active) 1.14f else 1f, spring(dampingRatio = 0.4f, stiffness = 380f), label = "tabPop")
             Column(
                 Modifier.weight(1f).fillMaxHeight()
-                    .background(if (active) lo.surface2 else Color.Transparent, RoundedCornerShape(30.dp))
-                    .pressable(RoundedCornerShape(30.dp)) { nav.tab(t.screen) },
+                    .background(pill, RoundedCornerShape(30.dp))
+                    .pressable(RoundedCornerShape(30.dp)) { if (!active) haptic(false); nav.tab(t.screen) },
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
-                IcV(if (active) t.on else t.off, 24.dp, tint)
+                IcV(if (active) t.on else t.off, 24.dp, tint, Modifier.graphicsLayer { scaleX = pop; scaleY = pop })
                 Text(t.label, style = LoType.caption.copy(fontWeight = FontWeight.Bold, lineHeight = 12.sp), color = tint, modifier = Modifier.padding(top = 2.dp))
             }
         }

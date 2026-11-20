@@ -231,12 +231,13 @@ private fun NowPlayingBars(tint: Color, modifier: Modifier = Modifier) = Ic(Ph.W
 @Composable
 fun MediaRow(
     title: String, line: String, thumb: String?, trailing: String? = null, index: Int? = null, active: Boolean = false,
-    separator: Boolean = true, pad: Dp = 20.dp, menu: MenuTarget? = null, flat: Boolean = false, onClick: () -> Unit,
+    separator: Boolean = true, pad: Dp = 20.dp, menu: MenuTarget? = null, flat: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit,
 ) {
     val lo = LocalLo.current
     val openMenu = LocalTrackMenu.current
+    val haptic = rememberHaptic()
     val inset = pad + if (index != null) 36.dp else 66.dp
-    Column(Modifier.fillMaxWidth().pressable(RoundedCornerShape(0.dp), onClick = onClick)) {
+    Column(modifier.fillMaxWidth().pressable(RoundedCornerShape(0.dp), onClick = onClick)) {
         Row(Modifier.fillMaxWidth().padding(start = pad, end = if (pad < 12.dp) 0.dp else 12.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
             if (index != null) {
                 Box(Modifier.width(36.dp)) {
@@ -254,7 +255,7 @@ fun MediaRow(
                 if (line.isNotBlank()) Text(line, style = LoType.small, color = lo.grey, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (trailing != null && !flat) Text(trailing, style = LoType.small, color = lo.grey, modifier = Modifier.padding(start = 10.dp))
-            if (menu != null) Box(Modifier.size(40.dp).pressable(CircleShape) { openMenu(menu) }, Alignment.Center) { Ic(Ph.More, 22.dp, lo.grey) }
+            if (menu != null) Box(Modifier.size(40.dp).pressable(CircleShape) { haptic(true); openMenu(menu) }, Alignment.Center) { Ic(Ph.More, 22.dp, lo.grey) }
             else Spacer(Modifier.width(6.dp))
         }
         if (separator && !flat) Hairline(inset)
@@ -269,8 +270,8 @@ fun playingId(): String? {
 }
 
 @Composable
-fun TrackRow(song: SongItem, index: Int? = null, flat: Boolean = false, onClick: () -> Unit) {
-    MediaRow(song.title, artistLine(song), song.thumbnail, song.duration?.let { formatTime(it * 1000L) }, index, playingId() == song.id, menu = MenuTarget(song.toMediaMetadata()), flat = flat, onClick = onClick)
+fun TrackRow(song: SongItem, index: Int? = null, flat: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    MediaRow(song.title, artistLine(song), song.thumbnail, song.duration?.let { formatTime(it * 1000L) }, index, playingId() == song.id, menu = MenuTarget(song.toMediaMetadata()), flat = flat, modifier = modifier, onClick = onClick)
 }
 
 /** Shelf card: square art with a soft edge, one line of title, one of grey detail. */

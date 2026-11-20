@@ -55,6 +55,7 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
     val connect = LocalConnect.current
     val sync = LocalSync.current
     val scope = rememberCoroutineScope()
+    val sheet = rememberSheetState(onDismiss)
     val m = target.song
     val db = pc?.database
     val songRow by remember(m.id) { db?.song(m.id) ?: flowOf(null) }.collectAsState(null)
@@ -76,7 +77,7 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
     var name by remember { mutableStateOf("") }
 
     fun say(s: String) = Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show()
-    fun done(s: String? = null) { s?.let(::say); onDismiss() }
+    fun done(s: String? = null) { s?.let(::say); sheet.dismiss() }
 
     fun enqueue(next: Boolean) {
         val r = remote
@@ -141,14 +142,7 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
         }
     }
 
-    Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
-        Alignment.BottomCenter,
-    ) {
-        Column(
-            Modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                .background(lo.card, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp),
-        ) {
+    SheetHost(sheet) {
             Box(Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(5.dp).background(lo.grey.copy(alpha = 0.5f), RoundedCornerShape(3.dp)))
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -169,14 +163,14 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
                         MenuRow(Ph.Radio, "Start Radio") { pc?.playRadio(m); done() }
                         MenuRow(if (liked) Ph.HeartFill else Ph.Heart, if (liked) "Remove from Liked Songs" else "Like", tint = if (liked) lo.signal else null) { toggleLike() }
                         MenuRow(Ph.AddList, "Add to Playlist…") { page = 1 }
-                        album?.let { (albumId, _) -> MenuRow(Ph.Disc, "Go to Album") { onNavigate(Screen.Album(albumId)); onDismiss() } }
+                        album?.let { (albumId, _) -> MenuRow(Ph.Disc, "Go to Album") { onNavigate(Screen.Album(albumId)); sheet.dismiss() } }
                         val withIds = m.artists.filter { !it.id.isNullOrBlank() }.take(3)
-                        withIds.forEach { a -> MenuRow(Ph.User, if (withIds.size > 1) "Go to ${a.name}" else "Go to Artist") { onNavigate(Screen.Artist(a.id!!)); onDismiss() } }
+                        withIds.forEach { a -> MenuRow(Ph.User, if (withIds.size > 1) "Go to ${a.name}" else "Go to Artist") { onNavigate(Screen.Artist(a.id!!)); sheet.dismiss() } }
                         MenuRow(Ph.Share, "Share") {
                             val send = Intent(Intent.ACTION_SEND).setType("text/plain")
                                 .putExtra(Intent.EXTRA_TEXT, "${m.title} · ${m.artists.joinToString(", ") { it.name }}\nhttps://music.youtube.com/watch?v=${m.id}")
                             ctx.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                            onDismiss()
+                            sheet.dismiss()
                         }
                         target.onRemove?.let { rm -> MenuRow(Ph.Close, target.removeLabel ?: "Remove", tint = lo.red) { rm(); done() } }
                     }
@@ -199,7 +193,6 @@ fun TrackMenuSheet(target: MenuTarget, onDismiss: () -> Unit, onNavigate: (Scree
                     }
                 }
             }
-        }
     }
 }
 

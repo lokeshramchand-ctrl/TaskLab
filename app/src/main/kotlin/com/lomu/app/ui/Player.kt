@@ -1,5 +1,13 @@
 package com.lomu.app.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -59,11 +67,19 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     ) {
         Cover(m.thumbnailUrl, 34.dp, radius = 8.dp)
         Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(m.title, style = LoType.sub.copy(fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2).sp), color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(m.artistLine(), style = LoType.small.copy(fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Medium), color = lo.grey, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        AnimatedContent(
+            targetState = m,
+            contentKey = { it.id },
+            transitionSpec = { (fadeIn(tween(260, delayMillis = 60)) + slideInVertically(tween(320, easing = IosEase)) { it / 3 }) togetherWith (fadeOut(tween(120)) + slideOutVertically(tween(200)) { -it / 3 }) },
+            modifier = Modifier.weight(1f),
+            label = "miniTitle",
+        ) { song ->
+            Column {
+                Text(song.title, style = LoType.sub.copy(fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2).sp), color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(song.artistLine(), style = LoType.small.copy(fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Medium), color = lo.grey, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
-        IconBtnV(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, { pc.togglePlayPause() }, size = 44.dp, iconSize = 28.dp)
+        PlayPauseBtn(playing, { pc.togglePlayPause() }, size = 44.dp, iconSize = 28.dp)
         IconBtnV(Icons.Rounded.FastForward, { pc.seekToNext() }, size = 44.dp, iconSize = 28.dp)
     }
 }
@@ -85,17 +101,20 @@ private fun FullPlayerContent(onClose: () -> Unit) {
     var mode by remember { mutableStateOf(0) } // 0 artwork, 1 lyrics, 2 playing next
     val liked = song?.song?.liked == true
     val openMenu = LocalTrackMenu.current
+    val haptic = rememberHaptic()
     val sub = lo.grey
 
-    Box(Modifier.fillMaxSize().background(lo.bg)) {
+    val (dragY, dragMod) = rememberDismissDrag(onClose)
+    Box(Modifier.fillMaxSize().graphicsLayer { translationY = dragY.value; alpha = 1f - (dragY.value / (size.height * 2f)).coerceIn(0f, 0.4f) }.background(lo.bg)) {
         // Tinted wash taken from the artwork, as in the reference player.
         Ambient(m?.thumbnailUrl, height = 900.dp, strength = 0.78f)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
             // grabber
-            Box(Modifier.fillMaxWidth().padding(top = 10.dp).pressable(RoundedCornerShape(4.dp), onClick = onClose), Alignment.Center) {
+            // The bar at the top: tap or pull down to close. The hit area is much taller than the bar itself.
+            Box(Modifier.fillMaxWidth().height(52.dp).then(dragMod).pressable(RoundedCornerShape(4.dp), onClick = onClose), Alignment.Center) {
                 Box(Modifier.width(36.dp).height(5.dp).background(sub.copy(alpha = 0.6f), RoundedCornerShape(3.dp)))
             }
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(4.dp))
             if (mode == 2) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Cover(m?.thumbnailUrl, 48.dp, radius = 5.dp)
@@ -119,7 +138,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) { QueuePanel(pc) }
             } else {
-                Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
+                Box(Modifier.weight(1f).fillMaxWidth().then(if (mode == 0) dragMod else Modifier), Alignment.Center) {
                     if (mode == 0) Artwork(m?.thumbnailUrl, playing) else LyricsPanel(pc, m)
                 }
                 Spacer(Modifier.height(18.dp))
@@ -128,8 +147,8 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                         Text(m?.title ?: "Nothing playing", style = LoType.title.copy(fontSize = 21.sp, lineHeight = 26.sp), color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(m?.artistLine().orEmpty(), style = LoType.body.copy(fontSize = 19.sp, lineHeight = 24.sp), color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Box(Modifier.size(32.dp).background(sub.copy(alpha = 0.25f), CircleShape).pressable(CircleShape) { pc.toggleLike() }, Alignment.Center) {
-                        IcV(if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, 18.dp, if (liked) lo.signal else lo.ink)
+                    Box(Modifier.size(32.dp).background(sub.copy(alpha = 0.25f), CircleShape).pressable(CircleShape) { haptic(true); pc.toggleLike() }, Alignment.Center) {
+                        HeartPop(liked, 18.dp, on = lo.signal, off = lo.ink)
                     }
                     if (m != null) {
                         Spacer(Modifier.width(10.dp))
@@ -143,7 +162,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
             SeekBar(pc)
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 IconBtnV(Icons.Rounded.FastRewind, { pc.seekToPrevious() }, size = 72.dp, iconSize = 52.dp)
-                IconBtnV(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, { pc.togglePlayPause() }, size = 84.dp, iconSize = 64.dp)
+                PlayPauseBtn(playing, { pc.togglePlayPause() }, size = 84.dp, iconSize = 64.dp)
                 IconBtnV(Icons.Rounded.FastForward, { pc.seekToNext() }, size = 72.dp, iconSize = 52.dp)
             }
             VolumeBar()
@@ -192,6 +211,8 @@ private fun SeekBar(pc: PlayerConnection) {
             delay(300)
         }
     }
+    val knob by animateDpAsState(if (dragging) 18.dp else 10.dp, spring(dampingRatio = 0.6f, stiffness = 500f), label = "knob")
+    val thick by animateDpAsState(if (dragging) 8.dp else 4.dp, spring(stiffness = 600f), label = "thick")
     val frac = if (dragging) drag else if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
     val shown = if (dragging) (drag * dur).toLong() else pos
     Column {
@@ -209,9 +230,9 @@ private fun SeekBar(pc: PlayerConnection) {
                 },
             Alignment.CenterStart,
         ) {
-            Box(Modifier.fillMaxWidth().height(4.dp).background(lo.grey.copy(alpha = 0.3f), CircleShape))
-            Box(Modifier.fillMaxWidth(frac).height(4.dp).background(lo.ink.copy(alpha = 0.85f), CircleShape))
-            Box(Modifier.offset(x = (maxWidth - 10.dp) * frac).size(10.dp).background(lo.ink, CircleShape))
+            Box(Modifier.fillMaxWidth().height(thick).background(lo.grey.copy(alpha = 0.3f), CircleShape))
+            Box(Modifier.fillMaxWidth(frac).height(thick).background(lo.ink.copy(alpha = 0.85f), CircleShape))
+            Box(Modifier.offset(x = (maxWidth - knob) * frac).size(knob).background(lo.ink, CircleShape))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatTime(shown), style = LoType.caption.copy(fontSize = 11.sp), color = lo.grey)
@@ -256,6 +277,7 @@ private fun VolumeBar() {
     var touched by remember { mutableStateOf<Float?>(null) }
     LaunchedEffect(system) { touched?.let { if (kotlin.math.abs(system - it) < 0.08f) touched = null } }
     val vol = touched ?: system
+    val vKnob by animateDpAsState(if (touched != null) 18.dp else 10.dp, spring(dampingRatio = 0.6f, stiffness = 500f), label = "vknob")
     fun set(x: Float, w: Int) {
         val v = (x / w).coerceIn(0f, 1f)
         touched = v
@@ -271,7 +293,7 @@ private fun VolumeBar() {
         ) {
             Box(Modifier.fillMaxWidth().height(4.dp).background(lo.grey.copy(alpha = 0.3f), CircleShape))
             Box(Modifier.fillMaxWidth(vol).height(4.dp).background(lo.ink.copy(alpha = 0.85f), CircleShape))
-            Box(Modifier.offset(x = (maxWidth - 10.dp) * vol).size(10.dp).background(lo.ink, CircleShape))
+            Box(Modifier.offset(x = (maxWidth - vKnob) * vol).size(vKnob).background(lo.ink, CircleShape))
         }
         IcV(Icons.Rounded.VolumeUp, 16.dp, lo.grey)
     }
