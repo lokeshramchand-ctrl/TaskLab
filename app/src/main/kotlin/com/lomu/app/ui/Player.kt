@@ -53,6 +53,8 @@ import com.lomu.app.extensions.metadata
 import com.lomu.app.models.MediaMetadata
 import com.lomu.app.playback.PlayerConnection
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.animation.core.Animatable
 
 /** Pushes an artwork colour to a rich, saturated mid-dark tone so the player wash is strong but white text stays readable. */
 private fun playerTint(c: Color?): Color? {
@@ -119,6 +121,9 @@ private fun FullPlayerContent(onClose: () -> Unit) {
     val sub = lo.grey
 
     val (dragY, dragMod) = rememberDismissDrag(onClose)
+    // Swipe the artwork sideways: right = next song, left = previous. The cover follows the finger and springs back.
+    val skipX = remember { Animatable(0f) }
+    val skipScope = rememberCoroutineScope()
     Box(Modifier.fillMaxSize().graphicsLayer { translationY = dragY.value; alpha = 1f - (dragY.value / (size.height * 2f)).coerceIn(0f, 0.4f) }.background(lo.bg)) {
         // Strong colour wash taken from the artwork; it cross-fades slowly when the song changes.
         val tint by animateColorAsState(playerTint(rememberTint(m?.thumbnailUrl)) ?: lo.bg, tween(900), label = "playerTint")
@@ -154,8 +159,23 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) { QueuePanel(pc) }
             } else {
-                Box(Modifier.weight(1f).fillMaxWidth().then(if (mode == 0) dragMod else Modifier), Alignment.Center) {
-                    if (mode == 0) Artwork(m?.thumbnailUrl, playing, tint) else LyricsPanel(pc, m)
+                Box(
+                    Modifier.weight(1f).fillMaxWidth().then(if (mode == 0) dragMod else Modifier)
+                        .then(if (mode != 0) Modifier else Modifier.pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    skipScope.launch {
+                                        val go = size.width * 0.22f
+                                        if (skipX.value > go) { haptic(true); pc.seekToNext() } else if (skipX.value < -go) { haptic(true); pc.seekToPrevious() }
+                                        skipX.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 380f))
+                                    }
+                                },
+                                onDragCancel = { skipScope.launch { skipX.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 380f)) } },
+                            ) { change, dx -> change.consume(); skipScope.launch { skipX.snapTo(skipX.value + dx) } }
+                        }),
+                    Alignment.Center,
+                ) {
+                    if (mode == 0) Box(Modifier.fillMaxSize().graphicsLayer { translationX = skipX.value * 0.7f; rotationZ = skipX.value / 60f }) { Artwork(m?.thumbnailUrl, playing, tint) } else LyricsPanel(pc, m)
                 }
                 Spacer(Modifier.height(18.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
