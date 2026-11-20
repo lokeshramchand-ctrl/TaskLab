@@ -124,8 +124,14 @@ fun HomeScreen() {
     val sync = LocalSync.current
     val fallback = remember { kotlinx.coroutines.flow.MutableStateFlow(com.lomu.app.sync.SyncState()) }
     val syncState by (sync?.state ?: fallback).collectAsState()
-    val recs by produceState<List<com.lomu.app.sync.SyncClient.RecShelf>>(emptyList(), syncState.user, syncState.status.startsWith("Up to date")) {
+    // Start from the cached shelves so Home doesn't flash the open feed ("India's Biggest Hits")
+    // before the personal "Top Picks" finish building a few seconds later.
+    var recsLoaded by remember { mutableStateOf(sync == null) }
+    val recs by produceState<List<com.lomu.app.sync.SyncClient.RecShelf>>(
+        remember { runCatching { sync?.cachedRecs() }.getOrNull().orEmpty() }, syncState.user, syncState.status.startsWith("Up to date"),
+    ) {
         value = runCatching { sync?.recs() }.getOrNull().orEmpty()
+        recsLoaded = true
     }
     val state by load("home") { YouTube.home() }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
@@ -168,8 +174,9 @@ fun HomeScreen() {
             }
         }
         // Until the personal shelves arrive (or when signed out) fall back to the open feed.
-        if (recs.isEmpty() && recent.isEmpty()) when (val st = state) {
-            is Load.Loading -> item { Loading() }
+        if (recs.isEmpty() && recent.isEmpty() && !recsLoaded) item { SkeletonShelves() }
+        else if (recs.isEmpty() && recent.isEmpty()) when (val st = state) {
+            is Load.Loading -> item { SkeletonShelves() }
             is Load.Err -> item { ErrorBox(st.message) }
             is Load.Ok -> items(st.value.sections.take(3)) { Shelf(it.title, it.items) }
         }
@@ -184,7 +191,7 @@ fun NewScreen() {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
         item { TitleBar("New") }
         when (val st = state) {
-            is Load.Loading -> item { Loading() }
+            is Load.Loading -> item { SkeletonShelves(3) }
             is Load.Err -> item { ErrorBox(st.message) }
             is Load.Ok -> items(st.value.sections) { Shelf(it.title, it.items) }
         }
@@ -267,7 +274,7 @@ fun SearchScreen() {
                     }
                 }
             } else when (val r = result) {
-                is Load.Loading -> item { Loading() }
+                is Load.Loading -> item { SkeletonRows() }
                 is Load.Err -> item { ErrorBox(r.message) }
                 is Load.Ok -> {
                     val sums = r.value?.summaries.orEmpty().let { all ->
@@ -523,7 +530,7 @@ fun AlbumScreen(id: String) {
     val player = LocalPlayer.current
     val state by load(id) { YouTube.album(id) }
     when (val st = state) {
-        is Load.Loading -> Box(Modifier.fillMaxSize()) { Loading(); TopBar("", LocalNav.current::pop) }
+        is Load.Loading -> Box(Modifier.fillMaxSize()) { SkeletonDetail(); TopBar("", LocalNav.current::pop) }
         is Load.Err -> Box(Modifier.fillMaxSize()) { ErrorBox(st.message); TopBar("", LocalNav.current::pop) }
         is Load.Ok -> {
             val page = st.value
@@ -552,7 +559,7 @@ fun PlaylistScreen(id: String) {
     val player = LocalPlayer.current
     val state by load(id) { YouTube.playlist(id) }
     when (val st = state) {
-        is Load.Loading -> Box(Modifier.fillMaxSize()) { Loading(); TopBar("", LocalNav.current::pop) }
+        is Load.Loading -> Box(Modifier.fillMaxSize()) { SkeletonDetail(); TopBar("", LocalNav.current::pop) }
         is Load.Err -> Box(Modifier.fillMaxSize()) { ErrorBox(st.message); TopBar("", LocalNav.current::pop) }
         is Load.Ok -> {
             val page = st.value
@@ -582,7 +589,7 @@ fun ArtistScreen(id: String) {
     val state by load(id) { YouTube.artist(id) }
     var bioOpen by remember { mutableStateOf(false) }
     when (val st = state) {
-        is Load.Loading -> Box(Modifier.fillMaxSize()) { Loading(); TopBar("", LocalNav.current::pop) }
+        is Load.Loading -> Box(Modifier.fillMaxSize()) { SkeletonDetail(); TopBar("", LocalNav.current::pop) }
         is Load.Err -> Box(Modifier.fillMaxSize()) { ErrorBox(st.message); TopBar("", LocalNav.current::pop) }
         is Load.Ok -> {
             val page = st.value

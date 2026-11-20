@@ -398,6 +398,8 @@ class SyncClient @Inject constructor(
         prefs.edit().putString("recsCache", arr.toString()).apply()
     }
 
+    fun cachedRecs(): List<RecShelf> = loadRecsCache()
+
     private fun loadRecsCache(): List<RecShelf> = runCatching {
         val arr = JSONArray(prefs.getString("recsCache", null) ?: return emptyList())
         (0 until arr.length()).map { i ->

@@ -1,5 +1,6 @@
 package com.lomu.app.ui
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -192,6 +193,75 @@ fun Eyebrow(text: String, modifier: Modifier = Modifier, accent: Boolean = false
 @Composable
 fun Loading() = Box(Modifier.fillMaxWidth().padding(48.dp), Alignment.Center) {
     CircularProgressIndicator(color = LocalLo.current.grey, strokeWidth = 2.dp, modifier = Modifier.size(26.dp))
+}
+
+// ---------- skeleton loading ----------
+
+/** Pulsing placeholder block: the base of every skeleton. */
+@Composable
+fun SkeletonBox(modifier: Modifier, shape: Shape = RoundedCornerShape(6.dp)) {
+    val lo = LocalLo.current
+    val a by androidx.compose.animation.core.rememberInfiniteTransition(label = "sk").animateFloat(
+        0.45f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(850, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "sk",
+    )
+    Box(modifier.graphicsLayer { alpha = a }.background(lo.surface2, shape))
+}
+
+/** Placeholder song rows (cover + two lines), matching TrackRow / ResultRow. */
+@Composable
+fun SkeletonRows(count: Int = 8, round: Boolean = false) {
+    Column {
+        repeat(count) { i ->
+            Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 7.dp, bottom = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                SkeletonBox(Modifier.size(52.dp), if (round) CircleShape else RoundedCornerShape(6.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    SkeletonBox(Modifier.fillMaxWidth(if (i % 3 == 0) 0.55f else 0.7f).height(13.dp))
+                    SkeletonBox(Modifier.fillMaxWidth(0.4f).height(11.dp))
+                }
+            }
+        }
+    }
+}
+
+/** Placeholder horizontal shelves of square cards, for Home / New. */
+@Composable
+fun SkeletonShelves(shelves: Int = 2) {
+    Column {
+        repeat(shelves) {
+            SkeletonBox(Modifier.padding(start = 20.dp, top = 18.dp, bottom = 12.dp).width(150.dp).height(20.dp))
+            Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                repeat(3) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        SkeletonBox(Modifier.fillMaxWidth().aspectRatio(1f), RoundedCornerShape(10.dp))
+                        SkeletonBox(Modifier.fillMaxWidth(0.8f).height(12.dp))
+                        SkeletonBox(Modifier.fillMaxWidth(0.5f).height(10.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Placeholder album / playlist / artist page: centred cover, title, buttons, rows. */
+@Composable
+fun SkeletonDetail() {
+    Column(Modifier.fillMaxSize().statusBarsPadding().padding(top = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        SkeletonBox(Modifier.size(230.dp), RoundedCornerShape(12.dp))
+        Spacer(Modifier.height(18.dp))
+        SkeletonBox(Modifier.width(200.dp).height(20.dp))
+        Spacer(Modifier.height(8.dp))
+        SkeletonBox(Modifier.width(120.dp).height(14.dp))
+        Spacer(Modifier.height(20.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            SkeletonBox(Modifier.width(110.dp).height(44.dp), CircleShape)
+            SkeletonBox(Modifier.width(110.dp).height(44.dp), CircleShape)
+        }
+        Spacer(Modifier.height(16.dp))
+        SkeletonRows(5)
+    }
 }
 
 @Composable
