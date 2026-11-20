@@ -121,7 +121,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
     val sub = lo.grey
 
     val (dragY, dragMod) = rememberDismissDrag(onClose)
-    // Swipe the artwork sideways: right = next song, left = previous. The cover follows the finger and springs back.
+    // Swipe the artwork sideways: left = next song, right = previous. The cover follows the finger and springs back.
     val skipX = remember { Animatable(0f) }
     val skipScope = rememberCoroutineScope()
     Box(Modifier.fillMaxSize().graphicsLayer { translationY = dragY.value; alpha = 1f - (dragY.value / (size.height * 2f)).coerceIn(0f, 0.4f) }.background(lo.bg)) {
@@ -166,7 +166,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                                 onDragEnd = {
                                     skipScope.launch {
                                         val go = size.width * 0.22f
-                                        if (skipX.value > go) { haptic(true); pc.seekToNext() } else if (skipX.value < -go) { haptic(true); pc.seekToPrevious() }
+                                        if (skipX.value < -go) { haptic(true); pc.seekToNext() } else if (skipX.value > go) { haptic(true); pc.seekToPrevious() }
                                         skipX.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 380f))
                                     }
                                 },
