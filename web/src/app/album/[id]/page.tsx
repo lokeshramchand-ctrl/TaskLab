@@ -2,7 +2,7 @@
 import { use } from 'react';
 import { useAlbum } from '@/lib/api';
 import { Collection, PageError, PageSkeleton } from '@/components/Collection';
-import { ShelfRow } from '@/components/Cards';
+import { ShelfTile } from '@/components/Cards';
 import { Icon } from '@/components/Icon';
 import { useLibrary } from '@/player/library';
 
@@ -35,10 +35,10 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
             <Icon name={saved ? 'check' : 'plus'} size={14} /> {saved ? 'Saved' : 'Save'}
           </button>
         }
+        extra={data.more.map((s, i) => (
+          <ShelfTile key={s.title} shelf={s} kicker={String(i + 3).padStart(2, '0')} />
+        ))}
       />
-      {data.more.map((s) => (
-        <ShelfRow key={s.title} shelf={s} />
-      ))}
     </>
   );
 }

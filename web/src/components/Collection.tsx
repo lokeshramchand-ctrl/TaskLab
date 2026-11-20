@@ -5,6 +5,7 @@ import type { ArtistRef, Track } from '@/lib/types';
 import { usePlayer } from '@/player/store';
 import { Cover } from './Art';
 import { Icon } from './Icon';
+import { Bento, Tile } from './Bento';
 import { TrackRow } from './Cards';
 
 /** Shared header + tracklist for albums and playlists. */
@@ -23,6 +24,7 @@ export function Collection({
   cover,
   empty,
   heading,
+  extra,
 }: {
   kind: string;
   title: string;
@@ -38,62 +40,83 @@ export function Collection({
   cover?: React.ReactNode;
   empty?: React.ReactNode;
   heading?: React.ReactNode;
+  extra?: React.ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  const rows: [string, React.ReactNode][] = [
+    ['Type', kind],
+    ['Songs', tracks.length],
+    ...(meta ? ([['Details', meta]] as [string, React.ReactNode][]) : []),
+  ];
   return (
-    <div className="fade-in ph-page">
-      <header className="ph-head">
-        <div className="ph-art">{cover ?? <Cover src={thumb} size="100%" radius={6} />}</div>
-        <div className="ph-info">
-          <div className="ph-kind">{kind}</div>
-          {heading ?? <h1 className="ph-title clamp2">{title}</h1>}
-          {artists && artists.length > 0 && (
-            <div className="ph-sub">
-              {artists.map((a, i) => (
-                <span key={i}>
-                  {i > 0 && ', '}
-                  {a.id ? <Link href={`/artist/${a.id}`}>{a.name}</Link> : a.name}
-                </span>
-              ))}
-              {meta && <span> · {meta}</span>}
+    <Bento className="fade-in">
+      <Tile span={12} tone="glow" className="hd" label={`${kind} header`}>
+        <div className="ph-head">
+          <div className="ph-art">{cover ?? <Cover src={thumb} size="100%" radius={8} />}</div>
+          <div className="ph-info">
+            <div className="ph-kind">{kind}</div>
+            {heading ?? <h1 className="ph-title clamp2">{title}</h1>}
+            {artists && artists.length > 0 && (
+              <div className="ph-sub">
+                {artists.map((a, i) => (
+                  <span key={i}>
+                    {i > 0 && ', '}
+                    {a.id ? <Link href={`/artist/${a.id}`}>{a.name}</Link> : a.name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="ph-actions">
+              <button className="btn primary lg" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source })}>
+                <Icon name="play" size={12} /> Play
+              </button>
+              <button className="btn lg" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source, shuffle: true })}>
+                <Icon name="shuffle" size={14} /> Shuffle
+              </button>
+              {actions}
             </div>
-          )}
-          {!artists?.length && meta && <div className="ph-sub">{meta}</div>}
-          {description && (
-            <div>
-              <p className={`ph-desc${more ? '' : ' clamp2'}`}>{description}</p>
-              {description.length > 140 && (
-                <button className="ph-more" onClick={() => setMore(!more)}>
-                  {more ? 'Show less' : 'More'}
-                </button>
-              )}
-            </div>
-          )}
-          <div className="ph-actions">
-            <button className="btn primary lg" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source })}>
-              <Icon name="play" size={12} /> Play
-            </button>
-            <button className="btn lg" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source, shuffle: true })}>
-              <Icon name="shuffle" size={14} /> Shuffle
-            </button>
-            {actions}
           </div>
         </div>
-      </header>
-      {!tracks.length && empty}
-      {tracks.length > 0 && (
-        <div className="list">
-          <div className="group-head">
-            <Icon name="st-todo" size={12} />
-            <span>Songs</span>
-            <span className="count">{tracks.length}</span>
-          </div>
-          {tracks.map((t, i) => (
-            <TrackRow key={`${t.id}-${i}`} track={t} index={i} list={tracks} showIndex={numbered} showArt={!numbered} playlistId={playlistId} />
-          ))}
-        </div>
+      </Tile>
+
+      {!tracks.length && (
+        <Tile span={12} tone="quiet" label="Empty">
+          {empty}
+        </Tile>
       )}
-    </div>
+      {tracks.length > 0 && (
+        <>
+          <Tile span={8} md={12} flush kicker="01" title="Songs" sub={`${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'}`} label="Songs">
+            <div className="list">
+              {tracks.map((t, i) => (
+                <TrackRow key={`${t.id}-${i}`} track={t} index={i} list={tracks} showIndex={numbered} showArt={!numbered} playlistId={playlistId} />
+              ))}
+            </div>
+          </Tile>
+          <Tile span={4} md={12} kicker="02" title="About" label="About">
+            {description && (
+              <div>
+                <p className={`ph-desc${more ? '' : ' clamp4'}`}>{description}</p>
+                {description.length > 140 && (
+                  <button className="ph-more" onClick={() => setMore(!more)}>
+                    {more ? 'Show less' : 'More'}
+                  </button>
+                )}
+              </div>
+            )}
+            <dl className="facts">
+              {rows.map(([k, v]) => (
+                <div key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </Tile>
+        </>
+      )}
+      {extra}
+    </Bento>
   );
 }
 
@@ -116,7 +139,7 @@ export function PageError({ error, retry }: { error: unknown; retry?: () => void
 
 export function PageSkeleton() {
   return (
-    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-end' }}>
+    <div className="tile" style={{ flexDirection: 'row', gap: 20, alignItems: 'flex-end' }}>
       <div className="skeleton" style={{ width: 136, height: 136, borderRadius: 6 }} />
       <div style={{ flex: 1 }}>
         <div className="skeleton" style={{ width: '55%', height: 38, borderRadius: 8 }} />

@@ -87,7 +87,7 @@ export function Toggle({ on, onChange, label, hint }: { on: boolean; onChange: (
         <i />
       </button>
       <style jsx>{`
-        .tg { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+        .tg { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
         .tg:last-child { border-bottom: 0; }
         .l { font-weight: 500; font-size: 14px; }
         .h { color: var(--muted); font-size: 12.5px; margin-top: 2px; }

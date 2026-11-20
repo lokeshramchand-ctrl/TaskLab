@@ -238,3 +238,99 @@ code { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
+/* ---------- bento: spacing scale, grid and tiles ---------- */
+:root { --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --tile-r: 12px; --gap: 12px; --row: 88px; }
+.panel { background-image: radial-gradient(color-mix(in srgb, var(--border) 80%, transparent) 1px, transparent 1.3px); background-size: 20px 20px; background-position: 10px 10px; }
+.bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); align-items: stretch; }
+.bento > .page-head { grid-column: 1 / -1; padding: var(--sp-1) 0 var(--sp-2); }
+.bento > .bento-full { grid-column: 1 / -1; }
+
+.tile {
+  grid-column: span var(--c, 4); position: relative; display: flex; flex-direction: column; gap: var(--sp-3);
+  min-width: 0; padding: var(--sp-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--tile-r);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03); overflow: hidden; isolation: isolate;
+  transition: border-color .2s var(--ease), transform .25s var(--spring), box-shadow .25s var(--ease);
+}
+.tile.tall { grid-row: span var(--r, 1); min-height: calc(var(--r, 1) * var(--row) + (var(--r, 1) - 1) * var(--gap)); }
+.tile.flush { padding: 0; gap: 0; }
+.tile.flush > .tile-h { padding: var(--sp-4) var(--sp-4) var(--sp-3); }
+a.tile:hover { transform: translateY(-1px); }
+a.tile:active { transform: scale(.995); }
+
+/* cursor-following glow, inside and along the border */
+.tile::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .25s var(--ease);
+  background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--signal) 13%, transparent), transparent 70%);
+}
+.tile::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; opacity: 0; transition: opacity .25s var(--ease);
+  background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--signal-hi) 85%, transparent), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.tile:hover::before, .tile:hover::after, .tile:focus-within::after { opacity: 1; }
+
+/* tones */
+.tile.tone-accent {
+  border-color: color-mix(in srgb, var(--signal) 38%, var(--border));
+  background:
+    radial-gradient(110% 130% at 0% 0%, color-mix(in srgb, var(--signal) 50%, transparent) 0%, transparent 58%),
+    radial-gradient(80% 110% at 100% 100%, color-mix(in srgb, var(--pink) 28%, transparent) 0%, transparent 62%),
+    radial-gradient(70% 90% at 100% 0%, color-mix(in srgb, var(--blue) 26%, transparent) 0%, transparent 60%),
+    var(--surface);
+}
+.tile.tone-glow { background: radial-gradient(90% 80% at 100% 0%, color-mix(in srgb, var(--signal) 16%, transparent), transparent 65%), var(--surface); }
+.tile.tone-quiet { background: transparent; border-style: dashed; border-color: var(--border-2); box-shadow: none; }
+
+/* tile header: numbered kicker, title, helper text, action */
+.tile-h { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.tile-t { min-width: 0; }
+.tile-t h2 { display: inline; font-size: 13px; font-weight: 500; letter-spacing: -.005em; color: var(--ink); }
+.tile-k { display: inline-block; margin-right: var(--sp-2); font: 500 11px/1 ui-monospace, 'JetBrains Mono', Menlo, Consolas, monospace; letter-spacing: .04em; color: var(--faint); vertical-align: 1px; }
+.tile-t p { margin-top: 2px; font-size: 12px; color: var(--muted); }
+.tile-a { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
+
+/* content that lives inside tiles */
+.tile .hscroll { margin: 0 calc(var(--sp-4) * -1); padding: var(--sp-1) var(--sp-4) var(--sp-2); }
+.tile .list { border: 0; border-radius: 0; background: transparent; }
+.tile .list > :not(:last-child) { border-bottom: 1px solid var(--border); }
+
+@media (max-width: 1100px) {
+  .tile { grid-column: span var(--cm, 6); }
+  .tile.tall { min-height: 0; grid-row: auto; }
+}
+@media (max-width: 700px) {
+  :root { --gap: 8px; --tile-r: 10px; }
+  .tile { grid-column: span var(--cs, 12); padding: var(--sp-3); }
+  .tile.flush { padding: 0; }
+  .tile.flush > .tile-h { padding: var(--sp-3) var(--sp-3) var(--sp-2); }
+  .tile .hscroll { margin: 0 calc(var(--sp-3) * -1); padding: var(--sp-1) var(--sp-3) var(--sp-2); }
+}
+
+/* detail pages in bento form */
+.tile.hd { padding: var(--sp-5); }
+.hd .ph-head { align-items: flex-end; }
+.ph-art { width: 144px; height: 144px; border-radius: 8px; }
+.facts { margin: 0; display: grid; gap: 0; }
+.facts > div { display: flex; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-2) 0; border-top: 1px solid var(--border); font-size: 12px; }
+.facts > div:first-child { border-top: 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; color: var(--text); text-align: right; }
+.clamp4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.ph-desc { margin-top: 0; }
+@media (max-width: 700px) { .tile.hd { padding: var(--sp-4); } .ph-art { width: 96px; height: 96px; } }
+
+.tile.clickable { text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.tile.clickable:hover { transform: translateY(-1px); }
+.tile.clickable:active { transform: scale(.995); }
+.tile .big { display: flex; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.tile .big .n { font-size: 32px; font-weight: 500; letter-spacing: -.03em; line-height: 1.1; color: var(--ink); }
+.tile.bar-tile { padding: var(--sp-2) var(--sp-3); }
+/* keep snapped shelves aligned with the tile's own padding */
+.hscroll { scroll-padding-inline: var(--gutter); }
+.tile .hscroll { scroll-padding-inline: var(--sp-4); }
+@media (max-width: 700px) { .tile .hscroll { scroll-padding-inline: var(--sp-3); } }
+
+/* a tile that spans two rows beside two stacked tiles */
+.tile.rs2 { grid-row: span 2; }
+@media (max-width: 1100px) { .tile.rs2 { grid-row: auto; } }

@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useExplore, useMood } from '@/lib/api';
 import type { AlbumCard, Track } from '@/lib/types';
-import { ItemCard, ShelfRow, ShelfSkeleton, TrackRow } from '@/components/Cards';
+import { ItemCard, ShelfSkeleton, ShelfTile, TrackRow } from '@/components/Cards';
+import { Bento, Tile } from '@/components/Bento';
 import { EmptyState, PageHeader } from '@/components/ui';
 import { Icon } from '@/components/Icon';
 import { useSettings } from '@/player/settings';
@@ -22,14 +23,16 @@ export default function ExploreGate() {
   const enabled = useSettings((s) => s.dev.explore);
   if (!enabled)
     return (
-      <>
+      <Bento>
         <PageHeader eyebrow="Explore" title="Explore is off" sub="Trending songs, new releases and moods. Turn it on under Settings → Developer." />
-        <div>
-          <Link href="/settings" className="btn primary">
-            Open settings
-          </Link>
-        </div>
-      </>
+        <Tile span={12} tone="quiet" label="Explore is off">
+          <div>
+            <Link href="/settings" className="btn primary">
+              Open settings
+            </Link>
+          </div>
+        </Tile>
+      </Bento>
     );
   return <Explore />;
 }
@@ -44,7 +47,7 @@ function Explore() {
   const releases: AlbumCard[] = data?.newReleases ?? [];
 
   return (
-    <>
+    <Bento className="fade-in">
       <PageHeader
         eyebrow="Explore"
         title="What's happening"
@@ -63,6 +66,7 @@ function Explore() {
         }
       />
 
+      <Tile span={12} className="bar-tile" label="Explore tabs">
       <div className="chips" role="tablist" style={{ alignSelf: 'flex-start' }}>
         {([['trending', 'Trending', trending.length], ['new', 'New releases', releases.length], ['moods', 'Moods', data?.moods?.length ?? 0]] as [Tab, string, number][]).map(([id, label, n]) => (
           <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>
@@ -71,75 +75,85 @@ function Explore() {
           </button>
         ))}
       </div>
+      </Tile>
 
-      {isLoading && (tab === 'trending' ? (
-        <div className="cols">
-          {Array.from({ length: 10 }, (_, i) => (
-            <div key={i} className="skeleton" style={{ height: 56, borderRadius: 6 }} />
-          ))}
-        </div>
-      ) : <ShelfSkeleton />)}
+      {isLoading && (
+        <Tile span={12} label="Loading">
+          <div className="cols">
+            {Array.from({ length: 10 }, (_, i) => (
+              <div key={i} className="skeleton" style={{ height: 40, borderRadius: 6 }} />
+            ))}
+          </div>
+        </Tile>
+      )}
       {error && (
-        <div className="callout err">
-          <Icon name="warn" size={18} /> Couldn&apos;t load Explore. {(error as Error).message}
-        </div>
+        <Tile span={12} tone="quiet" label="Explore error">
+          <div className="callout err">
+            <Icon name="warn" size={16} /> Couldn&apos;t load Explore. {(error as Error).message}
+          </div>
+        </Tile>
       )}
 
       {tab === 'trending' && (
-        <section className="fade-in cols">
-          {trending.map((t, i) => (
-            <TrackRow key={t.id} track={t} index={i} list={trending} showIndex />
-          ))}
-        </section>
+        <Tile span={12} flush kicker="01" title="Trending" sub={`${trending.length} songs`} label="Trending">
+          <div className="cols list">
+            {trending.map((t, i) => (
+              <TrackRow key={t.id} track={t} index={i} list={trending} showIndex />
+            ))}
+          </div>
+        </Tile>
       )}
 
       {tab === 'new' && (
-        <section className="fade-in grid">
-          {releases.map((a) => (
-            <ItemCard key={a.id} item={a} />
-          ))}
-          {!isLoading && !releases.length && <EmptyState icon="disc" title="No new releases right now" />}
-        </section>
+        <Tile span={12} kicker="01" title="New releases" sub={`${releases.length} albums and singles`} label="New releases">
+          <div className="grid">
+            {releases.map((a) => (
+              <ItemCard key={a.id} item={a} />
+            ))}
+            {!isLoading && !releases.length && <EmptyState icon="disc" title="No new releases right now" />}
+          </div>
+        </Tile>
       )}
 
       {tab === 'moods' && (
-        <section className="fade-in">
-          <div className="mood-grid">
-            {(data?.moods ?? []).map((m) => {
-              const on = mood?.params === m.params;
-              return (
-                <button
-                  key={m.params}
-                  className={`mood${on ? ' on' : ''}`}
-                  style={{ ['--h' as string]: hue(m.title) }}
-                  onClick={() => setMood(on ? null : m)}
-                  aria-pressed={on}
-                >
-                  {m.title}
-                </button>
-              );
-            })}
-          </div>
-          {mood && (
-            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {moodData.isLoading && <ShelfSkeleton />}
-              {moodData.data?.map((s) => <ShelfRow key={s.title} shelf={s} />)}
+        <>
+          <Tile span={12} kicker="01" title="Moods" sub="Pick a mood to see playlists for it" label="Moods">
+            <div className="mood-grid">
+              {(data?.moods ?? []).map((m) => {
+                const on = mood?.params === m.params;
+                return (
+                  <button
+                    key={m.params}
+                    className={`mood${on ? ' on' : ''}`}
+                    style={{ ['--h' as string]: hue(m.title) }}
+                    onClick={() => setMood(on ? null : m)}
+                    aria-pressed={on}
+                  >
+                    {m.title}
+                  </button>
+                );
+              })}
             </div>
+            {!isLoading && !(data?.moods?.length) && <EmptyState icon="sparkles" title="No moods available right now" />}
+          </Tile>
+          {mood && moodData.isLoading && (
+            <Tile span={12} flush label="Loading mood">
+              <ShelfSkeleton title={false} />
+            </Tile>
           )}
-          {!mood && (data?.moods?.length ?? 0) > 0 && <p className="muted" style={{ marginTop: 16 }}>Pick a mood to see playlists for it.</p>}
-          {!isLoading && !(data?.moods?.length) && <EmptyState icon="sparkles" title="No moods available right now" />}
-        </section>
+          {mood && moodData.data?.map((s, i) => <ShelfTile key={s.title} shelf={s} kicker={String(i + 2).padStart(2, '0')} />)}
+        </>
       )}
 
       <style jsx>{`
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 24px 20px; }
-        .cols { columns: 2 420px; column-gap: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: var(--sp-4); }
+        .cols { columns: 2 420px; column-gap: 0; }
         .cols > :global(*) { break-inside: avoid; margin-bottom: 1px; }
-        .mood-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-        .mood { position: relative; height: 64px; padding: 0 16px; border-radius: 6px; text-align: left; font-weight: 600; font-size: 14px; letter-spacing: -.02em; border: 1px solid var(--border); background: linear-gradient(135deg, hsl(var(--h) 80% 60% / .16), hsl(var(--h) 80% 60% / .04)); transition: transform .3s var(--spring), box-shadow .25s var(--ease), border-color .2s; }
+        .mood-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-2); }
+        .mood { position: relative; height: 56px; padding: 0 var(--sp-4); border-radius: 6px; text-align: left; font-weight: 600; font-size: 14px; letter-spacing: -.02em; border: 1px solid var(--border); background: linear-gradient(135deg, hsl(var(--h) 80% 60% / .16), hsl(var(--h) 80% 60% / .04)); transition: transform .3s var(--spring), box-shadow .25s var(--ease), border-color .2s; }
         .mood:hover { transform: translateY(-2px); box-shadow: var(--lift-hi); }
         .mood.on { border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-soft); }
       `}</style>
-    </>
+    </Bento>
   );
 }

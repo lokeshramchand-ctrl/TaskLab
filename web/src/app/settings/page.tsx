@@ -7,6 +7,7 @@ import { HOME_SECTIONS, useSettings, type Theme } from '@/player/settings';
 import { Icon, type IconName } from '@/components/Icon';
 import { PageHeader, Toggle } from '@/components/ui';
 import { ThemeSelect } from '@/components/Nav';
+import { Bento, Tile } from '@/components/Bento';
 import { toast } from '@/components/Toast';
 import { useAuth } from '@/player/sync';
 
@@ -33,11 +34,11 @@ export default function SettingsPage() {
     { id: 'dark', icon: 'moon', label: 'Dark' },
   ];
 
+  const nk = (() => { let i = 0; return () => String(++i).padStart(2, '0'); })();
   return (
-    <>
+    <Bento className="fade-in">
       <PageHeader eyebrow="Settings" title="Settings" sub="Account, appearance, playback and the things you can turn on or off." />
-      <div className="stack">
-        <Group title="Account" sub="One owner account. It syncs likes, playlists and history to your other devices.">
+        <Group kicker={nk()} span={7} title="Account" sub="One owner account. It syncs likes, playlists and history to your other devices.">
           <Row
             icon="user"
             label={user ? `Signed in as ${user}` : 'Not signed in'}
@@ -49,19 +50,19 @@ export default function SettingsPage() {
           </Row>
         </Group>
 
-        <Group title="Appearance">
+        <Group kicker={nk()} span={5} title="Appearance">
           <Row icon="sun" label="Interface theme" hint="Select or customise your interface colour scheme.">
             <div style={{ width: 168 }}><ThemeSelect /></div>
           </Row>
         </Group>
 
-        <Group title="Home" sub="Pick what the home page shows. The Customise button on Home does the same.">
+        <Group kicker={nk()} span={6} tall title="Home" sub="Pick what the home page shows. The Customise button on Home does the same.">
           {HOME_SECTIONS.map((s) => (
             <HomeToggle key={s.id} id={s.id} label={s.label} hint={s.hint} />
           ))}
         </Group>
 
-        <Group title="Playback">
+        <Group kicker={nk()} span={6} title="Playback">
           <Row icon="radio" label="Autoplay" hint="When the queue ends, keep going with songs picked for you.">
             <Switch on={autoplay} label="Autoplay" onChange={(v) => usePlayer.setState({ autoplay: v })} />
           </Row>
@@ -70,7 +71,7 @@ export default function SettingsPage() {
           </Row>
         </Group>
 
-        <Group title="Library">
+        <Group kicker={nk()} span={6} title="Library">
           <Row icon="download" label="Export library" hint="Download your likes, playlists, saved albums, artists and history as a JSON file.">
             <button className="btn" onClick={exportLibrary}>
               Export
@@ -104,7 +105,7 @@ export default function SettingsPage() {
           </Row>
         </Group>
 
-        <Group title="Developer">
+        <Group kicker={nk()} span={6} title="Developer">
           <Row icon="compass" label="Explore" hint="Show the Explore tab (charts, new releases, moods).">
             <Switch on={dev.explore} label="Explore" onChange={(v) => setDev('explore', v)} />
           </Row>
@@ -115,18 +116,12 @@ export default function SettingsPage() {
             <Switch on={dev.streamInfo} label="Stream info" onChange={(v) => setDev('streamInfo', v)} />
           </Row>
         </Group>
-        <Group title="About">
+        <Group kicker={nk()} span={6} title="About">
           <Row icon="info" label="LoMu web player" hint={`Connected to ${typeof window !== 'undefined' ? window.location.host : 'this server'}. Press / anywhere to search and Esc to close the full player.`}>
             <span className="badge">v1.0</span>
           </Row>
         </Group>
-      </div>
-
-
-      <style jsx>{`
-        .stack { display: flex; flex-direction: column; gap: 20px; max-width: 860px; }
-      `}</style>
-    </>
+    </Bento>
   );
 }
 
@@ -136,7 +131,7 @@ function HomeToggle({ id, label, hint }: { id: (typeof HOME_SECTIONS)[number]['i
     <div className="hp">
       <Toggle on={on} label={label} hint={hint} onChange={(v) => useSettings.getState().setHome(id, v)} />
       <style jsx>{`
-        .hp { padding: 0 20px; }
+        .hp { padding: 0 var(--sp-4); }
         .hp + .hp { border-top: 1px solid var(--border); }
         .hp :global(.tg) { border-bottom: 0; }
       `}</style>
@@ -144,20 +139,14 @@ function HomeToggle({ id, label, hint }: { id: (typeof HOME_SECTIONS)[number]['i
   );
 }
 
-function Group({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+function Group({ title, sub, kicker, span = 6, tall, children }: { title: string; sub?: string; kicker?: string; span?: number; tall?: boolean; children: React.ReactNode }) {
   return (
-    <section className="fade-in">
-      <div className="section-head">
-        <div>
-          <h2>{title}</h2>
-          {sub && <div className="sub">{sub}</div>}
-        </div>
-      </div>
-      <div className="card box">{children}</div>
+    <Tile span={span} md={12} flush className={tall ? 'rs2' : undefined} kicker={kicker} title={title} sub={sub} label={title}>
+      <div className="grp">{children}</div>
       <style jsx>{`
-        .box { padding: 0; overflow: hidden; }
+        .grp { border-top: 1px solid var(--border); }
       `}</style>
-    </section>
+    </Tile>
   );
 }
 
@@ -173,10 +162,10 @@ function Row({ icon, label, hint, children }: { icon: IconName; label: string; h
       </div>
       {children}
       <style jsx>{`
-        .r { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+        .r { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
         .r + .r { border-top: 1px solid var(--border); }
-        .l { font-weight: 500; font-size: 14px; }
-        .h { color: var(--muted); font-size: 12.5px; margin-top: 2px; line-height: 1.4; }
+        .l { font-weight: 500; font-size: 13px; color: var(--ink); }
+        .h { color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.4; }
         @media (max-width: 600px) { .r { flex-wrap: wrap; } }
       `}</style>
     </div>

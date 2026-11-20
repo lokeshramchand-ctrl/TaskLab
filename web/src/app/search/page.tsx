@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useSearch, useSuggest } from '@/lib/api';
 import { artistNames, hrefFor } from '@/lib/format';
 import type { Item } from '@/lib/types';
-import { ItemCard, ShelfRow, ShelfSkeleton, TrackRow } from '@/components/Cards';
+import { ItemCard, ShelfTile, ShelfSkeleton, TrackRow } from '@/components/Cards';
 import { Avatar, Cover } from '@/components/Art';
+import { Bento, Tile } from '@/components/Bento';
 import { PageHeader } from '@/components/ui';
 import { Icon } from '@/components/Icon';
 import { useLibrary } from '@/player/library';
@@ -67,10 +68,10 @@ function SearchInner() {
   };
 
   return (
-    <div>
+    <Bento className="fade-in">
       <PageHeader title="Search" sub="Songs, artists, albums and playlists from YouTube Music." />
       <form
-        className="box"
+        className="box bento-full"
         onSubmit={(e) => {
           e.preventDefault();
           submit(text);
@@ -96,7 +97,7 @@ function SearchInner() {
       </form>
 
       {focused && (text.trim().length > 1 ? sugg.data : recent.length > 0) && (
-        <div className="sugg card fade-in">
+        <div className="sugg card fade-in bento-full">
           {text.trim().length > 1 ? (
             <>
               {sugg.data?.queries.map((s) => (
@@ -129,16 +130,19 @@ function SearchInner() {
       )}
 
       {q && isLoading && (
-        <>
-          <ShelfSkeleton />
-          <ShelfSkeleton />
-        </>
+        <Tile span={12} flush label="Loading results">
+          <ShelfSkeleton title={false} />
+        </Tile>
       )}
-      {error && <div className="callout err" style={{ marginTop: 20 }}><Icon name="warn" size={18} />Search failed: {(error as Error).message}</div>}
+      {error && (
+        <Tile span={12} tone="quiet" label="Search error">
+          <div className="callout err"><Icon name="warn" size={16} />Search failed: {(error as Error).message}</div>
+        </Tile>
+      )}
 
       {data && (
-        <div className="results fade-in">
-          <div className="chips" role="tablist" aria-label="Result type">
+        <>
+          <div className="chips bento-full" role="tablist" aria-label="Result type" style={{ justifySelf: 'start' }}>
             {([
               ['all', 'All', 0],
               ['songs', 'Songs', data.songs.length],
@@ -157,61 +161,85 @@ function SearchInner() {
 
           {type === 'all' && (
             <>
-              <div className="top-grid">
-                {data.top && <TopResult item={data.top} />}
-                {data.songs.length > 0 && (
-                  <section className="songs">
-                    <div className="section-head">
-                      <h2>Songs</h2>
-                      {data.songs.length > 5 && (
-                        <button className="btn ghost sm" onClick={() => setType('songs')}>
-                          Show all {data.songs.length}
-                        </button>
-                      )}
-                    </div>
+              {data.top && <TopResult item={data.top} />}
+              {data.songs.length > 0 && (
+                <Tile
+                  span={data.top ? 7 : 12}
+                  md={12}
+                  flush
+                  kicker="01"
+                  title="Songs"
+                  label="Songs"
+                  action={
+                    data.songs.length > 5 ? (
+                      <button className="btn ghost sm" onClick={() => setType('songs')}>
+                        Show all {data.songs.length}
+                      </button>
+                    ) : undefined
+                  }
+                >
+                  <div className="list">
                     {data.songs.slice(0, 5).map((t, i) => (
                       <TrackRow key={t.id} track={t} index={i} list={data.songs} />
                     ))}
-                  </section>
-                )}
-              </div>
-              {data.artists.length > 0 && <ShelfRow shelf={{ title: 'Artists', items: data.artists }} />}
-              {data.albums.length > 0 && <ShelfRow shelf={{ title: 'Albums & singles', items: data.albums }} />}
-              {data.playlists.length > 0 && <ShelfRow shelf={{ title: 'Playlists', items: data.playlists }} />}
-              {data.videos.length > 0 && <ShelfRow shelf={{ title: 'Videos', items: data.videos }} />}
+                  </div>
+                </Tile>
+              )}
+              {data.artists.length > 0 && <ShelfTile shelf={{ title: 'Artists', items: data.artists }} kicker="02" />}
+              {data.albums.length > 0 && <ShelfTile shelf={{ title: 'Albums & singles', items: data.albums }} kicker="03" />}
+              {data.playlists.length > 0 && <ShelfTile shelf={{ title: 'Playlists', items: data.playlists }} kicker="04" />}
+              {data.videos.length > 0 && <ShelfTile shelf={{ title: 'Videos', items: data.videos }} kicker="05" />}
             </>
           )}
 
           {type === 'songs' && (
-            <section>
-              <div className="section-head">
-                <h2>Songs</h2>
+            <Tile
+              span={12}
+              flush
+              kicker="01"
+              title="Songs"
+              sub={`${data.songs.length} results`}
+              label="Songs"
+              action={
                 <button className="btn primary sm" onClick={() => usePlayer.getState().play(data.songs, 0, { source: `search:${q}` })}>
-                  <Icon name="play" size={13} /> Play all
+                  <Icon name="play" size={10} /> Play all
                 </button>
+              }
+            >
+              <div className="list">
+                {data.songs.map((t, i) => (
+                  <TrackRow key={t.id} track={t} index={i} list={data.songs} />
+                ))}
               </div>
-              {data.songs.map((t, i) => (
-                <TrackRow key={t.id} track={t} index={i} list={data.songs} />
-              ))}
-            </section>
+            </Tile>
           )}
-          {type === 'artists' && <ItemGrid items={data.artists} />}
-          {type === 'albums' && <ItemGrid items={data.albums} />}
-          {type === 'playlists' && <ItemGrid items={data.playlists} />}
-          {type === 'videos' && <ItemGrid items={data.videos} />}
+          {type === 'artists' && <ItemGrid items={data.artists} title="Artists" />}
+          {type === 'albums' && <ItemGrid items={data.albums} title="Albums" />}
+          {type === 'playlists' && <ItemGrid items={data.playlists} title="Playlists" />}
+          {type === 'videos' && <ItemGrid items={data.videos} title="Videos" />}
 
-          {!data.songs.length && !data.albums.length && !data.artists.length && <div className="empty"><b>Nothing found for “{q}”</b><span>Try a different spelling, or search for the artist.</span></div>}
-        </div>
+          {!data.songs.length && !data.albums.length && !data.artists.length && (
+            <Tile span={12} tone="quiet" label="No results">
+              <div className="empty"><b>Nothing found for “{q}”</b><span>Try a different spelling, or search for the artist.</span></div>
+            </Tile>
+          )}
+        </>
       )}
 
       {!q && (
-        <div className="start fade-in">
+        <>
           {recent.length > 0 && (
-            <section>
-              <div className="section-head">
-                <h2>Recent searches</h2>
-                <button className="btn ghost sm" onClick={() => useLibrary.getState().clearSearches()}>Clear</button>
-              </div>
+            <Tile
+              span={12}
+              kicker="01"
+              title="Recent searches"
+              label="Recent searches"
+              action={
+                <button className="btn ghost sm" onClick={() => useLibrary.getState().clearSearches()}>
+                  Clear
+                </button>
+              }
+            >
               <div className="pills">
                 {recent.map((r) => (
                   <button key={r} className="pill" onClick={() => submit(r)}>
@@ -219,10 +247,9 @@ function SearchInner() {
                   </button>
                 ))}
               </div>
-            </section>
+            </Tile>
           )}
-          <section>
-            <div className="section-head"><h2>Browse categories</h2></div>
+          <Tile span={12} kicker={recent.length > 0 ? '02' : '01'} title="Browse categories" label="Browse categories">
             <div className="cats">
               {CATS.map(([label, from, to]) => (
                 <button key={label} className="cat" style={{ background: `linear-gradient(135deg, ${from}, ${to})` }} onClick={() => submit(label)}>
@@ -230,35 +257,31 @@ function SearchInner() {
                 </button>
               ))}
             </div>
-          </section>
-        </div>
+          </Tile>
+        </>
       )}
 
       <style jsx>{`
-        .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+        .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--sp-3); }
         .cat { height: 76px; padding: 12px; border-radius: 6px; color: #fff; font-family: var(--font-display); font-size: 14px; font-weight: 500; letter-spacing: -.005em; text-align: left; vertical-align: top; transition: transform .35s var(--spring), filter .2s; }
         .cat:hover { filter: brightness(1.06); }
         .cat:active { transform: scale(.97); }
         @media (max-width: 900px) { .cats { grid-template-columns: 1fr 1fr; } }
-        .box { position: relative; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 8px 0 12px; border-radius: 6px; margin-top: 4px; background: var(--surface); border: 1px solid var(--border-2); color: var(--muted); transition: box-shadow .2s; }
+        .box { position: relative; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 8px 0 12px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border-2); color: var(--muted); transition: box-shadow .2s; }
         .box:focus-within { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); color: var(--text); }
         .box input { flex: 1; border: 0; outline: 0; background: transparent; font-size: 13px; font-weight: 400; color: var(--text); min-width: 0; }
         .box input::placeholder { color: var(--muted); font-weight: 400; }
         .sugg { position: absolute; z-index: 30; margin-top: 8px; width: min(640px, calc(100% - 2 * var(--gutter))); padding: 8px; box-shadow: var(--lift-hi); }
         :global(.srow) { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border-radius: 4px; text-align: left; font-weight: 400; font-size: 13px; color: var(--text); }
         :global(.srow:hover) { background: var(--surface-2); }
-        .results { margin-top: 4px; display: flex; flex-direction: column; gap: 20px; }
-        .start { margin-top: 18px; display: flex; flex-direction: column; gap: 22px; }
-        .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+                        .pills { display: flex; flex-wrap: wrap; gap: 8px; }
         .pill { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; font-weight: 500; transition: background .2s, transform .3s var(--spring); }
         .pill:hover { background: color-mix(in srgb, var(--surface-2) 86%, var(--text)); }
         .pill:active { transform: scale(.97); }
-        .results :global(.chips) { align-self: flex-start; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 24px 20px; }
-        .top-grid { display: grid; grid-template-columns: minmax(260px, 360px) 1fr; gap: 24px; align-items: start; }
-        @media (max-width: 900px) { .top-grid { grid-template-columns: 1fr; } }
+                .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 24px 20px; }
+        @media (max-width: 900px) {
       `}</style>
-    </div>
+    </Bento>
   );
 }
 
@@ -288,34 +311,36 @@ function TopResult({ item }: { item: Item }) {
   const href = hrefFor(item);
   const body = (
     <>
-      {item.kind === 'artist' ? <Avatar src={item.thumb} size={120} /> : <Cover src={item.thumb} size={120} radius={14} />}
-      <div className="eyebrow" style={{ marginTop: 18 }}>Top result · {item.kind === 'song' ? 'Song' : item.kind}</div>
-      <div className="tt clamp2">{item.title}</div>
-      <div className="muted clamp1">{item.kind === 'song' ? artistNames(item.artists) : item.kind === 'album' ? artistNames(item.artists) : item.subtitle}</div>
+      {item.kind === 'artist' ? <Avatar src={item.thumb} size={96} /> : <Cover src={item.thumb} size={96} radius={8} />}
+      <div>
+        <div className="eyebrow">Top result · {item.kind === 'song' ? 'Song' : item.kind}</div>
+        <div className="tt clamp2">{item.title}</div>
+        <div className="muted clamp1">{item.kind === 'song' ? artistNames(item.artists) : item.kind === 'album' ? artistNames(item.artists) : item.subtitle}</div>
+      </div>
       <style jsx>{`
-        .tt { font-size: 24px; font-weight: 600; letter-spacing: -.04em; line-height: 1.1; margin: 6px 0 4px; }
+        .tt { font-size: 20px; font-weight: 500; letter-spacing: -.015em; line-height: 1.2; margin: var(--sp-1) 0; color: var(--ink); }
       `}</style>
     </>
   );
-  const cls = 'top card';
-  const style = { display: 'block', padding: 22, textAlign: 'left' as const, width: '100%' };
   return item.kind === 'song' ? (
-    <button className={cls} style={style} onClick={() => usePlayer.getState().playRadio(item)}>
+    <Tile span={5} md={12} tone="glow" onClick={() => usePlayer.getState().playRadio(item)} label="Top result">
       {body}
-    </button>
+    </Tile>
   ) : (
-    <Link className={cls} style={style} href={href!}>
+    <Tile span={5} md={12} tone="glow" href={href!} label="Top result">
       {body}
-    </Link>
+    </Tile>
   );
 }
 
-function ItemGrid({ items }: { items: Item[] }) {
+function ItemGrid({ items, title }: { items: Item[]; title: string }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '24px 18px' }}>
-      {items.map((it) => (
-        <ItemCard key={it.kind + it.id} item={it} />
-      ))}
-    </div>
+    <Tile span={12} kicker="01" title={title} sub={`${items.length} results`} label={title}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))', gap: 'var(--sp-4)' }}>
+        {items.map((it) => (
+          <ItemCard key={it.kind + it.id} item={it} />
+        ))}
+      </div>
+    </Tile>
   );
 }

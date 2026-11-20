@@ -8,7 +8,8 @@ import { TrackRow, ItemCard } from '@/components/Cards';
 import { Cover } from '@/components/Art';
 import { Mosaic } from '@/components/Mosaic';
 import { Icon, type IconName } from '@/components/Icon';
-import { EmptyState, PageHeader, Stat } from '@/components/ui';
+import { EmptyState, PageHeader } from '@/components/ui';
+import { Bento, Tile } from '@/components/Bento';
 
 type Tab = 'liked' | 'playlists' | 'albums' | 'artists' | 'history';
 const TABS: { id: Tab; label: string }[] = [
@@ -53,16 +54,23 @@ export default function Library() {
   };
 
   return (
-    <>
+    <Bento className="fade-in">
       <PageHeader eyebrow="Library" title="Your library" sub="Everything you have liked, saved and played. Synced to your other devices." actions={<Link href="/import" className="btn"><Icon name="download" size={16} /> Import</Link>} />
 
-      <section className="grid-stats">
-        <button className="statbtn" onClick={() => pick('liked')}><Stat icon="heart" label="Liked songs" value={likedAll.length} /></button>
-        <button className="statbtn" onClick={() => pick('playlists')}><Stat icon="playlist" label="Playlists" value={playlists.length + savedCount} /></button>
-        <button className="statbtn" onClick={() => pick('albums')}><Stat icon="disc" label="Albums saved" value={Object.keys(albums).length} /></button>
-        <button className="statbtn" onClick={() => pick('history')}><Stat icon="history" label="Plays logged" value={history.length} /></button>
-      </section>
+      <Tile span={3} md={6} sm={6} onClick={() => pick('liked')} title="Liked songs" label="Liked songs">
+        <div className="big"><span className="n">{likedAll.length}</span></div>
+      </Tile>
+      <Tile span={3} md={6} sm={6} onClick={() => pick('playlists')} title="Playlists" label="Playlists">
+        <div className="big"><span className="n">{playlists.length + savedCount}</span></div>
+      </Tile>
+      <Tile span={3} md={6} sm={6} onClick={() => pick('albums')} title="Albums saved" label="Albums saved">
+        <div className="big"><span className="n">{Object.keys(albums).length}</span></div>
+      </Tile>
+      <Tile span={3} md={6} sm={6} onClick={() => pick('history')} title="Plays logged" label="Plays logged">
+        <div className="big"><span className="n">{history.length}</span></div>
+      </Tile>
 
+      <Tile span={12} className="bar-tile" label="Library controls">
       <div className="bar">
         <div className="chips" role="tablist">
           {TABS.map((t) => (
@@ -91,37 +99,43 @@ export default function Library() {
           </select>
         )}
       </div>
+      </Tile>
 
       {tab === 'liked' && (
-        <section className="fade-in">
-          <div className="hero card pad">
-            <Cover src={likedAll[0]?.thumb} size={112} radius={14} />
-            <div className="grow">
-              <div className="eyebrow">Collection</div>
-              <h2 className="ht">Liked songs</h2>
-              <div className="muted small">{likedAll.length} songs{q ? ` · ${likedTracks.length} match` : ''}</div>
-              <div className="row" style={{ marginTop: 14 }}>
-                <button className="btn primary" disabled={!likedTracks.length} onClick={() => usePlayer.getState().play(likedTracks, 0, { source: 'liked' })}>
-                  <Icon name="play" size={14} /> Play
-                </button>
-                <button className="btn" disabled={!likedTracks.length} onClick={() => usePlayer.getState().play(likedTracks, 0, { source: 'liked', shuffle: true })}>
-                  <Icon name="shuffle" size={16} /> Shuffle
-                </button>
+        <>
+          <Tile span={4} md={12} tone="glow" label="Liked songs collection">
+            <div className="hero">
+              <Cover src={likedAll[0]?.thumb} size={96} radius={8} />
+              <div className="grow">
+                <div className="eyebrow">Collection</div>
+                <h2 className="ht">Liked songs</h2>
+                <div className="muted small">{likedAll.length} songs{q ? ` · ${likedTracks.length} match` : ''}</div>
               </div>
             </div>
-          </div>
-          {likedAll.length === 0 && <EmptyState icon="heart" title="No liked songs yet" hint="Tap the heart on any song and it lands here." />}
-          {likedAll.length > 0 && likedTracks.length === 0 && <EmptyState icon="search" title="No matches" hint={`Nothing in your liked songs matches “${filter}”.`} />}
-          <div className="list">
-            {likedTracks.map((t, i) => (
-              <TrackRow key={t.id} track={t} index={i} list={likedTracks} />
-            ))}
-          </div>
-        </section>
+            <div className="row">
+              <button className="btn primary lg" disabled={!likedTracks.length} onClick={() => usePlayer.getState().play(likedTracks, 0, { source: 'liked' })}>
+                <Icon name="play" size={12} /> Play
+              </button>
+              <button className="btn lg" disabled={!likedTracks.length} onClick={() => usePlayer.getState().play(likedTracks, 0, { source: 'liked', shuffle: true })}>
+                <Icon name="shuffle" size={14} /> Shuffle
+              </button>
+            </div>
+          </Tile>
+          <Tile span={8} md={12} flush kicker="01" title="Songs" sub={`${likedTracks.length} shown`} label="Liked songs">
+            {likedAll.length === 0 && <EmptyState icon="heart" title="No liked songs yet" hint="Tap the heart on any song and it lands here." />}
+            {likedAll.length > 0 && likedTracks.length === 0 && <EmptyState icon="search" title="No matches" hint={`Nothing in your liked songs matches “${filter}”.`} />}
+            <div className="list">
+              {likedTracks.map((t, i) => (
+                <TrackRow key={t.id} track={t} index={i} list={likedTracks} />
+              ))}
+            </div>
+          </Tile>
+        </>
       )}
 
       {tab === 'playlists' && (
-        <section className="fade-in grid">
+        <Tile span={12} kicker="01" title="Playlists" label="Playlists">
+        <div className="grid">
           {naming ? (
             <form
               className="newpl card"
@@ -158,44 +172,49 @@ export default function Library() {
             .map((x) => (
               <ItemCard key={x.item.id} item={x.item} />
             ))}
-        </section>
+        </div>
+        </Tile>
       )}
 
       {tab === 'albums' && (
-        <section className="fade-in grid">
+        <Tile span={12} kicker="01" title="Albums" label="Albums">
+        <div className="grid">
           {Object.values(albums).length === 0 && <Empty icon="disc" title="No saved albums" text="Save albums with the Save button on any album page." />}
           {Object.values(albums)
             .sort((a, b) => b.at - a.at)
             .map((x) => (
               <ItemCard key={x.item.id} item={x.item} />
             ))}
-        </section>
+        </div>
+        </Tile>
       )}
 
       {tab === 'artists' && (
-        <section className="fade-in grid">
+        <Tile span={12} kicker="01" title="Artists" label="Artists">
+        <div className="grid">
           {Object.values(artists).length === 0 && <Empty icon="user" title="No followed artists" text="Follow artists from their page and they show up here." />}
           {Object.values(artists)
             .sort((a, b) => b.at - a.at)
             .map((x) => (
               <ItemCard key={x.item.id} item={x.item} />
             ))}
-        </section>
+        </div>
+        </Tile>
       )}
 
       {tab === 'history' && (
-        <section className="fade-in list">
+        <Tile span={12} flush kicker="01" title="History" sub={`${historyTracks.length} plays`} label="History">
           {historyTracks.length === 0 && <EmptyState icon={q ? 'search' : 'history'} title={q ? 'No matches' : 'Nothing played yet'} hint={q ? `Nothing in your history matches “${filter}”.` : 'Songs you play will appear here.'} />}
-          {historyTracks.map((t, i) => (
-            <TrackRow key={`${t.id}-${i}`} track={t} index={i} list={historyTracks} />
-          ))}
-        </section>
+          <div className="list">
+            {historyTracks.map((t, i) => (
+              <TrackRow key={`${t.id}-${i}`} track={t} index={i} list={historyTracks} />
+            ))}
+          </div>
+        </Tile>
       )}
 
       <style jsx>{`
-        .statbtn { text-align: left; display: block; border-radius: var(--r); transition: transform .3s var(--spring); }
-        .statbtn:hover { transform: translateY(-2px); }
-        .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+                .bar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
         .cnt { margin-left: 6px; font-size: 11px; font-weight: 600; opacity: .6; }
         .filter { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); color: var(--muted); flex: 1; min-width: 180px; max-width: 320px; }
         .filter:focus-within { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); color: var(--text); }
@@ -203,10 +222,10 @@ export default function Library() {
         .sort { height: 28px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); font-size: 13px; font-weight: 500; }
         .nameinp { width: 100%; height: 28px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); outline: 0; }
         .nameinp:focus { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); }
-        .hero { display: flex; align-items: center; gap: 22px; margin-bottom: 14px; }
+        .hero { display: flex; align-items: center; gap: var(--sp-4); }
         .ht { font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 1.1; margin: 4px 0; }
-        .list { display: flex; flex-direction: column; gap: 1px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 24px 20px; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: var(--sp-4); }
         .newpl { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; aspect-ratio: 1; font-weight: 500; transition: box-shadow .25s var(--ease), transform .3s var(--spring); }
         .newpl:hover { box-shadow: var(--lift-hi); transform: translateY(-2px); }
         :global(.pl) { display: block; }
@@ -214,7 +233,7 @@ export default function Library() {
         .s { font-size: 12.5px; margin-top: 2px; }
         @media (max-width: 900px) { .grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); } .hero { flex-direction: column; align-items: flex-start; } }
       `}</style>
-    </>
+    </Bento>
   );
 }
 

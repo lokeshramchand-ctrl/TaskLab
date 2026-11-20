@@ -6,6 +6,7 @@ import { currentTrack, usePlayer } from '@/player/store';
 import { useLibrary } from '@/player/library';
 import { Avatar, Cover } from './Art';
 import { Icon } from './Icon';
+import { Tile } from './Bento';
 import { useMenu } from './Menu';
 import { warmProps } from '@/lib/warm';
 
@@ -93,6 +94,20 @@ export function ShelfRow({ shelf, action }: { shelf: Shelf; action?: React.React
         ))}
       </div>
     </section>
+  );
+}
+
+/** A shelf as a bento tile: title and kicker on top, cards scrolling inside. */
+export function ShelfTile({ shelf, action, kicker, span = 12 }: { shelf: Shelf; action?: React.ReactNode; kicker?: string; span?: number }) {
+  const songs = shelf.items.filter((i): i is Track => i.kind === 'song');
+  return (
+    <Tile span={span} md={12} kicker={kicker} title={shelf.title} sub={shelf.subtitle} action={action} label={shelf.title}>
+      <div className="hscroll">
+        {shelf.items.map((it) => (
+          <ItemCard key={`${it.kind}:${it.id}`} item={it} siblings={songs.length > 1 ? songs : undefined} />
+        ))}
+      </div>
+    </Tile>
   );
 }
 
