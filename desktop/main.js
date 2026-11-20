@@ -14,6 +14,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const nodeNet = require('node:net');
 const path = require('node:path');
+const { autoUpdater } = require('electron-updater');
 
 app.setName('LoMu');
 
@@ -205,6 +206,7 @@ function createMenu() {
       {
         label: 'LoMu',
         submenu: [
+          { label: `Check for updates (version ${app.getVersion()})`, click: checkForUpdatesNow },
           { label: 'Open data folder', click: () => shell.openPath(userData()) },
           { label: 'Open server log', click: () => shell.openPath(path.join(userData(), 'logs', 'server.log')) },
           { type: 'separator' },
@@ -213,6 +215,75 @@ function createMenu() {
       },
     ]),
   );
+}
+
+// ------------------------------------------------------------------ updates
+// Every push to GitHub publishes a release (see .github/workflows/desktop.yml). The installed app checks for one
+// on start and every 30 minutes, downloads it in the background and offers to restart into it. If you ignore the
+// offer it is installed the next time you quit the app.
+
+let updateReady = null;
+let manualCheck = false;
+const updLog = (m) => {
+  try {
+    fs.appendFileSync(path.join(userData(), 'logs', 'updater.log'), `${new Date().toISOString()} ${m}
+`);
+  } catch {
+    /* logging only */
+  }
+};
+
+function offerRestart(version) {
+  dialog
+    .showMessageBox(win && !win.isDestroyed() ? win : undefined, {
+      type: 'info',
+      buttons: ['Restart now', 'Later'],
+      defaultId: 0,
+      title: 'LoMu update',
+      message: `LoMu ${version} is ready`,
+      detail: 'Restart to update. If you choose Later, it installs when you next quit LoMu.',
+    })
+    .then(({ response }) => {
+      if (response === 0) {
+        quitting = true;
+        autoUpdater.quitAndInstall(true, true); // silent, and start LoMu again afterwards
+      }
+    });
+}
+
+function setupUpdates() {
+  if (!app.isPackaged) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.logger = { info: updLog, warn: updLog, error: updLog, debug: () => {} };
+  autoUpdater.on('update-available', (i) => updLog(`update ${i.version} found, downloading`));
+  autoUpdater.on('update-not-available', () => {
+    if (manualCheck) dialog.showMessageBox({ type: 'info', message: `LoMu ${app.getVersion()} is the latest version.` });
+    manualCheck = false;
+  });
+  autoUpdater.on('update-downloaded', (i) => {
+    updateReady = i.version;
+    manualCheck = false;
+    offerRestart(i.version);
+  });
+  autoUpdater.on('error', (e) => {
+    updLog(`error: ${e && e.message ? e.message : e}`);
+    if (manualCheck) dialog.showMessageBox({ type: 'warning', message: 'Could not check for updates', detail: 'Are you online? Details are in the updater log.' });
+    manualCheck = false;
+  });
+  const check = () => autoUpdater.checkForUpdates().catch((e) => updLog(`check failed: ${e && e.message}`));
+  setTimeout(check, 15_000);
+  setInterval(check, 30 * 60_000);
+}
+
+function checkForUpdatesNow() {
+  if (!app.isPackaged) {
+    dialog.showMessageBox({ type: 'info', message: 'Updates only work in the installed app.' });
+    return;
+  }
+  if (updateReady) return offerRestart(updateReady);
+  manualCheck = true;
+  autoUpdater.checkForUpdates().catch(() => {});
 }
 
 // ------------------------------------------------------------------ life cycle
@@ -240,6 +311,7 @@ app.whenReady().then(async () => {
   createMenu();
   createWindow();
   createTray();
+  setupUpdates();
   try {
     await startServer();
   } catch (e) {

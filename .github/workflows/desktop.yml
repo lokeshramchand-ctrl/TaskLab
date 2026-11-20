@@ -1,0 +1,69 @@
+# Every push that changes the web app or the desktop shell builds the Windows installer and publishes it as a
+# GitHub release. Installed copies of the app find the new release by themselves (electron-updater) and update.
+name: Desktop app
+
+on:
+  push:
+    branches: [music, main]
+    paths: ['web/**', 'desktop/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            desktop/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Typecheck and unit tests
+        run: |
+          npm run typecheck
+          npm test
+        working-directory: web
+
+      - name: Install desktop dependencies
+        run: npm ci
+        working-directory: desktop
+
+      # Versions only have to go up: 1.0.<run number>. The installer, the update feed (latest.yml) and the
+      # app's own version all come from this number.
+      - name: Build the installer
+        shell: bash
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          npm run dist -- --publish never "-c.extraMetadata.version=$VERSION"
+        working-directory: desktop
+
+      - name: Publish the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            "desktop/dist/LoMu-Setup-$VERSION.exe" \
+            "desktop/dist/LoMu-Setup-$VERSION.exe.blockmap" \
+            "desktop/dist/latest.yml" \
+            --target "${{ github.sha }}" \
+            --title "LoMu for Windows $VERSION" \
+            --notes "Built from ${{ github.sha }} on ${{ github.ref_name }}." \
+            --latest

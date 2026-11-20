@@ -19,11 +19,53 @@
   "build": {
     "appId": "com.lomu.desktop",
     "productName": "LoMu",
-    "directories": { "output": "dist" },
-    "files": ["main.js", "package.json", "build/icon.png"],
-    "extraResources": [{ "from": "build/server", "to": "server", "filter": ["**/*", "node_modules/**/*", "**/node_modules/**/*"] }],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "build/icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "build/server",
+        "to": "server",
+        "filter": [
+          "**/*",
+          "node_modules/**/*",
+          "**/node_modules/**/*"
+        ]
+      }
+    ],
     "asar": true,
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.png" },
-    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true }
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "LoMu-Setup-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "lokeshramchand-ctrl",
+      "repo": "TaskLab",
+      "releaseType": "release"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
   }
 }
