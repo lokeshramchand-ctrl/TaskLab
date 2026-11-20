@@ -134,6 +134,13 @@ fun HomeScreen() {
         recsLoaded = true
     }
     val state by load("home") { YouTube.home() }
+    // Pools of colour taken from the artwork the page is showing: top picks first, then recent likes.
+    val poolUrls = (recs.flatMap { it.tracks.take(1) }.map { it.thumbnailUrl } + recent.map { it.song.thumbnailUrl }).filterNotNull().distinct().take(3)
+    val pool0 = rememberTint(poolUrls.getOrNull(0))
+    val pool1 = rememberTint(poolUrls.getOrNull(1))
+    val pool2 = rememberTint(poolUrls.getOrNull(2))
+    Box(Modifier.fillMaxSize()) {
+    ColorPools(listOf(pool0, pool1, pool2))
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
         item { TitleBar("Home") }
         val top = recs.firstOrNull()
@@ -180,6 +187,7 @@ fun HomeScreen() {
             is Load.Err -> item { ErrorBox(st.message) }
             is Load.Ok -> items(st.value.sections.take(3)) { Shelf(it.title, it.items) }
         }
+    }
     }
 }
 
