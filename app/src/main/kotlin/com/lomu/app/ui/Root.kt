@@ -173,8 +173,8 @@ private fun TabBar(nav: Nav) {
     val tabs = listOfNotNull(
         TabDef("Home", Lin.Focus.vector, Lin.Focus.vector, Screen.Home),
         if (UiPrefs.showNew(LocalContext.current)) TabDef("New", Lin.Projects.vector, Lin.Projects.vector, Screen.New) else null,
-        TabDef("Library", Lin.Views.vector, Lin.Views.vector, Screen.Library),
         TabDef("Search", Lin.Search.vector, Lin.Search.vector, Screen.Search),
+        TabDef("Library", Lin.Views.vector, Lin.Views.vector, Screen.Library),
     )
     val shape = RoundedCornerShape(36.dp)
     val haptic = rememberHaptic()
