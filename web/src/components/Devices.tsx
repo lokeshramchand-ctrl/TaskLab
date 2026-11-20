@@ -56,15 +56,15 @@ export function DevicesButton({ className = 'icon-btn', down = false }: { classN
       )}
       <style jsx>{`
         .wrap { position: relative; display: inline-flex; }
-        .pop { position: absolute; right: 0; bottom: calc(100% + 14px); width: 300px; max-width: calc(100vw - 28px); z-index: 80; background: var(--surface); border: 1px solid var(--border-2); border-radius: 6px; box-shadow: var(--lift-hi); padding: 4px; animation: rise .15s var(--ease-out) both; }
+        .pop { position: absolute; right: 0; bottom: calc(100% + 14px); width: 300px; max-width: calc(100vw - 28px); z-index: 80; background: var(--card-hover); border-radius: 8px; box-shadow: var(--lift-hi); padding: 8px; animation: rise .15s var(--ease-out) both; }
         .wrap.down .pop { bottom: auto; top: calc(100% + 6px); }
-        h4 { font-size: 12px; font-weight: 500; color: var(--muted); padding: 6px 8px 6px; }
+        h4 { font-size: 16px; font-weight: 700; color: var(--ink); padding: 8px 8px 8px; }
         .hint { color: var(--muted); font-size: 12px; padding: 6px 8px 8px; }
         .s { color: var(--muted); font-size: 12px; }
         .dev { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 6px 8px; border-radius: 4px; }
-        .dev:hover { background: var(--active); }
-        .dev.act { color: var(--peri-t); }
-        .n { display: block; font-weight: 500; font-size: 13px; }
+        .dev:hover { background: var(--row-hover); }
+        .dev.act { color: var(--signal); }
+        .n { display: block; font-weight: 500; font-size: 14px; }
         .dev .s { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
       `}</style>
     </div>

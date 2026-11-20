@@ -7,6 +7,7 @@ import { Cover } from './Art';
 import { Icon } from './Icon';
 import { Bento, Tile } from './Bento';
 import { TrackRow } from './Cards';
+import { useTint } from '@/lib/tint';
 
 /** Shared header + tracklist for albums and playlists. */
 export function Collection({
@@ -43,6 +44,7 @@ export function Collection({
   extra?: React.ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  useTint(thumb ?? tracks[0]?.thumb);
   const rows: [string, React.ReactNode][] = [
     ['Type', kind],
     ['Songs', tracks.length],
@@ -50,34 +52,35 @@ export function Collection({
   ];
   return (
     <Bento className="fade-in">
-      <Tile span={12} tone="glow" className="hd" label={`${kind} header`}>
+      <Tile span={12} className="hd" label={`${kind} header`}>
         <div className="ph-head">
-          <div className="ph-art">{cover ?? <Cover src={thumb} size="100%" radius={8} />}</div>
+          <div className="ph-art">{cover ?? <Cover src={thumb} size="100%" radius={4} />}</div>
           <div className="ph-info">
             <div className="ph-kind">{kind}</div>
             {heading ?? <h1 className="ph-title clamp2">{title}</h1>}
-            {artists && artists.length > 0 && (
-              <div className="ph-sub">
-                {artists.map((a, i) => (
-                  <span key={i}>
-                    {i > 0 && ', '}
-                    {a.id ? <Link href={`/artist/${a.id}`}>{a.name}</Link> : a.name}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="ph-actions">
-              <button className="btn primary lg" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source })}>
-                <Icon name="play" size={12} /> Play
-              </button>
-              <button className="btn lg" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source, shuffle: true })}>
-                <Icon name="shuffle" size={14} /> Shuffle
-              </button>
-              {actions}
+            <div className="ph-sub">
+              {artists?.map((a, i) => (
+                <span key={i}>
+                  {i > 0 && ', '}
+                  {a.id ? <Link href={`/artist/${a.id}`}>{a.name}</Link> : <b>{a.name}</b>}
+                </span>
+              ))}
+              {artists && artists.length > 0 && meta && <span className="dot"> • </span>}
+              {meta && <span>{meta}</span>}
             </div>
           </div>
         </div>
       </Tile>
+
+      <div className="bento-full actionbar">
+        <button className="bigplay" aria-label="Play" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source })}>
+          <Icon name="play" size={24} />
+        </button>
+        <button className="icon-btn big" aria-label="Shuffle play" title="Shuffle" disabled={!tracks.length} onClick={() => usePlayer.getState().play(tracks, 0, { source, shuffle: true })}>
+          <Icon name="shuffle" size={28} />
+        </button>
+        {actions}
+      </div>
 
       {!tracks.length && (
         <Tile span={12} tone="quiet" label="Empty">
@@ -86,14 +89,22 @@ export function Collection({
       )}
       {tracks.length > 0 && (
         <>
-          <Tile span={8} md={12} flush kicker="01" title="Songs" sub={`${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'}`} label="Songs">
+          <Tile span={12} flush label="Songs">
+            <div className="thead" aria-hidden>
+              <span className="i">#</span>
+              <span className="g" style={numbered ? undefined : { paddingLeft: 56 }}>Title</span>
+              {!numbered && <span className="a">Album</span>}
+              <span className="sp" />
+              <span className="d"><Icon name="clock" size={16} /></span>
+              <span className="sp" />
+            </div>
             <div className="list">
               {tracks.map((t, i) => (
-                <TrackRow key={`${t.id}-${i}`} track={t} index={i} list={tracks} showIndex={numbered} showArt={!numbered} playlistId={playlistId} />
+                <TrackRow key={`${t.id}-${i}`} track={t} index={i} list={tracks} showIndex showArt={!numbered} playlistId={playlistId} />
               ))}
             </div>
           </Tile>
-          <Tile span={4} md={12} kicker="02" title="About" label="About">
+          <Tile span={12} tone="card" title="About" label="About">
             {description && (
               <div>
                 <p className={`ph-desc${more ? '' : ' clamp4'}`}>{description}</p>
@@ -139,10 +150,10 @@ export function PageError({ error, retry }: { error: unknown; retry?: () => void
 
 export function PageSkeleton() {
   return (
-    <div className="tile" style={{ flexDirection: 'row', gap: 20, alignItems: 'flex-end' }}>
-      <div className="skeleton" style={{ width: 136, height: 136, borderRadius: 6 }} />
+    <div className="tile" style={{ flexDirection: 'row', gap: 24, alignItems: 'flex-end' }}>
+      <div className="skeleton" style={{ width: 232, height: 232, borderRadius: 4 }} />
       <div style={{ flex: 1 }}>
-        <div className="skeleton" style={{ width: '55%', height: 38, borderRadius: 8 }} />
+        <div className="skeleton" style={{ width: '55%', height: 64, borderRadius: 8 }} />
         <div className="skeleton" style={{ width: '25%', height: 16, borderRadius: 6, marginTop: 14 }} />
       </div>
     </div>

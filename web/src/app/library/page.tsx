@@ -1,5 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLibrary } from '@/player/library';
 import { usePlayer } from '@/player/store';
@@ -21,7 +22,13 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export default function Library() {
+  const params = useSearchParams();
   const [tab, setTab] = useState<Tab>('liked');
+  // the sidebar links here with ?tab=liked
+  useEffect(() => {
+    const t = params.get('tab') as Tab | null;
+    if (t && TABS.some((x) => x.id === t)) setTab(t);
+  }, [params]);
   const [filter, setFilter] = useState('');
   const [sort, setSort] = useState<'recent' | 'title' | 'artist'>('recent');
   const [naming, setNaming] = useState(false);
@@ -55,20 +62,7 @@ export default function Library() {
 
   return (
     <Bento className="fade-in">
-      <PageHeader eyebrow="Library" title="Your library" sub="Everything you have liked, saved and played. Synced to your other devices." actions={<Link href="/import" className="btn"><Icon name="download" size={16} /> Import</Link>} />
-
-      <Tile span={3} md={6} sm={6} onClick={() => pick('liked')} title="Liked songs" label="Liked songs">
-        <div className="big"><span className="n">{likedAll.length}</span></div>
-      </Tile>
-      <Tile span={3} md={6} sm={6} onClick={() => pick('playlists')} title="Playlists" label="Playlists">
-        <div className="big"><span className="n">{playlists.length + savedCount}</span></div>
-      </Tile>
-      <Tile span={3} md={6} sm={6} onClick={() => pick('albums')} title="Albums saved" label="Albums saved">
-        <div className="big"><span className="n">{Object.keys(albums).length}</span></div>
-      </Tile>
-      <Tile span={3} md={6} sm={6} onClick={() => pick('history')} title="Plays logged" label="Plays logged">
-        <div className="big"><span className="n">{history.length}</span></div>
-      </Tile>
+      <PageHeader title="Your Library" actions={<Link href="/import" className="btn"><Icon name="download" size={16} /> Import</Link>} />
 
       <Tile span={12} className="bar-tile" label="Library controls">
       <div className="bar">
@@ -103,25 +97,23 @@ export default function Library() {
 
       {tab === 'liked' && (
         <>
-          <Tile span={4} md={12} tone="glow" label="Liked songs collection">
+          <Tile span={12} tone="glow" className="likedhead" label="Liked songs collection">
             <div className="hero">
-              <Cover src={likedAll[0]?.thumb} size={96} radius={8} />
+              <span className="likeart"><Icon name="heartFill" size={64} /></span>
               <div className="grow">
-                <div className="eyebrow">Collection</div>
-                <h2 className="ht">Liked songs</h2>
-                <div className="muted small">{likedAll.length} songs{q ? ` · ${likedTracks.length} match` : ''}</div>
+                <div className="ph-kind">Playlist</div>
+                <h2 className="ht">Liked Songs</h2>
+                <div className="muted">{likedAll.length} songs{q ? ` · ${likedTracks.length} match` : ''}</div>
               </div>
-            </div>
-            <div className="row">
-              <button className="btn primary lg" disabled={!likedTracks.length} onClick={() => usePlayer.getState().play(likedTracks, 0, { source: 'liked' })}>
-                <Icon name="play" size={12} /> Play
+              <button className="bigplay" aria-label="Play liked songs" disabled={!likedTracks.length} onClick={() => usePlayer.getState().play(likedTracks, 0, { source: 'liked' })}>
+                <Icon name="play" size={24} />
               </button>
-              <button className="btn lg" disabled={!likedTracks.length} onClick={() => usePlayer.getState().play(likedTracks, 0, { source: 'liked', shuffle: true })}>
-                <Icon name="shuffle" size={14} /> Shuffle
+              <button className="icon-btn big" aria-label="Shuffle liked songs" title="Shuffle" disabled={!likedTracks.length} onClick={() => usePlayer.getState().play(likedTracks, 0, { source: 'liked', shuffle: true })}>
+                <Icon name="shuffle" size={28} />
               </button>
             </div>
           </Tile>
-          <Tile span={8} md={12} flush kicker="01" title="Songs" sub={`${likedTracks.length} shown`} label="Liked songs">
+          <Tile span={12} flush label="Liked songs">
             {likedAll.length === 0 && <EmptyState icon="heart" title="No liked songs yet" hint="Tap the heart on any song and it lands here." />}
             {likedAll.length > 0 && likedTracks.length === 0 && <EmptyState icon="search" title="No matches" hint={`Nothing in your liked songs matches “${filter}”.`} />}
             <div className="list">
@@ -216,21 +208,23 @@ export default function Library() {
       <style jsx>{`
                 .bar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
         .cnt { margin-left: 6px; font-size: 11px; font-weight: 600; opacity: .6; }
-        .filter { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); color: var(--muted); flex: 1; min-width: 180px; max-width: 320px; }
-        .filter:focus-within { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); color: var(--text); }
-        .filter input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; color: var(--text); }
-        .sort { height: 28px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); font-size: 13px; font-weight: 500; }
-        .nameinp { width: 100%; height: 28px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); outline: 0; }
-        .nameinp:focus { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); }
-        .hero { display: flex; align-items: center; gap: var(--sp-4); }
-        .ht { font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 1.1; margin: 4px 0; }
-        
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: var(--sp-4); }
-        .newpl { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; aspect-ratio: 1; font-weight: 500; transition: box-shadow .25s var(--ease), transform .3s var(--spring); }
-        .newpl:hover { box-shadow: var(--lift-hi); transform: translateY(-2px); }
-        :global(.pl) { display: block; }
-        .t { font-weight: 600; font-size: 13.5px; margin-top: 10px; }
-        .s { font-size: 12.5px; margin-top: 2px; }
+        .filter { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px 0 12px; border-radius: 4px; background: var(--pill); color: var(--muted); flex: 1; min-width: 180px; max-width: 320px; }
+        .filter:focus-within { box-shadow: 0 0 0 2px var(--ink); color: var(--text); }
+        .filter input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 14px; color: var(--ink); }
+        .sort { height: 32px; padding: 0 12px; border-radius: 4px; border: 0; background: var(--pill); color: var(--text); font-size: 14px; font-weight: 500; }
+        .nameinp { width: 100%; height: 40px; padding: 0 12px; border-radius: 4px; border: 0; background: var(--surface-2); color: var(--ink); outline: 0; font-size: 16px; }
+        .nameinp:focus { box-shadow: 0 0 0 2px var(--ink); }
+        .hero { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+        .likeart { width: 140px; height: 140px; border-radius: 4px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #450af5, #8e8ee5 60%, #c4efd9); box-shadow: 0 4px 60px rgba(0, 0, 0, .5); flex: none; }
+        .ht { font-size: clamp(32px, 4.4vw, 64px); font-weight: 900; letter-spacing: -.03em; line-height: 1.05; margin: 4px 0 8px; }
+        :global(.likedhead) { background: linear-gradient(180deg, rgba(80, 56, 160, .55), transparent) !important; padding: var(--sp-5) !important; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 16px; }
+        .newpl { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; aspect-ratio: 1; font-weight: 700; border-radius: 8px; background: var(--surface); transition: background .3s var(--ease); }
+        .newpl:hover { background: var(--card-hover); }
+        :global(.pl) { display: block; padding: 12px; border-radius: 8px; background: var(--surface); transition: background .3s var(--ease); }
+        :global(.pl:hover) { background: var(--card-hover); }
+        .t { font-weight: 700; font-size: 16px; margin-top: 16px; }
+        .s { font-size: 14px; margin-top: 4px; }
         @media (max-width: 900px) { .grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); } .hero { flex-direction: column; align-items: flex-start; } }
       `}</style>
     </Bento>

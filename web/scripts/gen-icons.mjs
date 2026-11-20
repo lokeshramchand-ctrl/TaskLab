@@ -74,6 +74,19 @@ const MAP = {
   bell: ['regular', 'bell'],
   cloud: ['regular', 'cloud-arrow-up'],
   pulse: ['regular', 'chart-line-up'],
+  // Spotify-style navigation: filled when active, bolder search, round add / saved marks, nav arrows
+  homeFill: ['fill', 'house-fill'],
+  searchBold: ['bold', 'magnifying-glass-bold'],
+  libraryFill: ['fill', 'books-fill'],
+  plusCircle: ['regular', 'plus-circle'],
+  checkCircleFill: ['fill', 'check-circle-fill'],
+  chevL: ['bold', 'caret-left-bold'],
+  chevR: ['bold', 'caret-right-bold'],
+  speakerLow: ['regular', 'speaker-low'],
+  fullscreen: ['regular', 'arrows-out-simple'],
+  listBullets: ['regular', 'list-bullets'],
+  pinFill: ['fill', 'push-pin-fill'],
+  heartBold: ['fill', 'heart-fill'],
 };
 
 const out = [];

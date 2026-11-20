@@ -189,9 +189,9 @@ function HubGroup({ kicker }: { kicker: string }) {
         </form>
       )}
       <style jsx>{`
-        .hubform { display: flex; flex-wrap: wrap; gap: 8px; padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--border); }
-        .hubform input { flex: 1 1 160px; height: 32px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; outline: none; }
-        .hubform input:focus { border-color: var(--signal); }
+        .hubform { display: flex; flex-wrap: wrap; gap: 8px; padding: var(--sp-3) var(--sp-4); border-top: 1px solid rgba(255, 255, 255, .08); }
+        .hubform input { flex: 1 1 160px; height: 40px; padding: 0 12px; border-radius: 4px; border: 0; background: var(--surface-2); color: var(--ink); font: inherit; font-size: 14px; outline: none; }
+        .hubform input:focus { box-shadow: 0 0 0 2px var(--ink); }
         .err { flex-basis: 100%; color: var(--red-t); font-size: 13px; background: var(--red-soft); padding: 8px 10px; border-radius: 5px; }
       `}</style>
     </Group>
@@ -214,10 +214,10 @@ function HomeToggle({ id, label, hint }: { id: (typeof HOME_SECTIONS)[number]['i
 
 function Group({ title, sub, kicker, span = 6, tall, children }: { title: string; sub?: string; kicker?: string; span?: number; tall?: boolean; children: React.ReactNode }) {
   return (
-    <Tile span={span} md={12} flush className={tall ? 'rs2' : undefined} kicker={kicker} title={title} sub={sub} label={title}>
+    <Tile span={span} md={12} flush tone="card" className={tall ? 'rs2' : undefined} kicker={kicker} title={title} sub={sub} label={title}>
       <div className="grp">{children}</div>
       <style jsx>{`
-        .grp { border-top: 1px solid var(--border); }
+        .grp { border-top: 1px solid rgba(255, 255, 255, .08); }
       `}</style>
     </Tile>
   );
@@ -236,9 +236,9 @@ function Row({ icon, label, hint, children }: { icon: IconName; label: string; h
       {children}
       <style jsx>{`
         .r { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
-        .r + .r { border-top: 1px solid var(--border); }
-        .l { font-weight: 500; font-size: 13px; color: var(--ink); }
-        .h { color: var(--muted); font-size: 12px; margin-top: 2px; line-height: 1.4; }
+        .r + .r { border-top: 1px solid rgba(255, 255, 255, .08); }
+        .l { font-weight: 500; font-size: 15px; color: var(--ink); }
+        .h { color: var(--muted); font-size: 13px; margin-top: 2px; line-height: 1.4; }
         @media (max-width: 600px) { .r { flex-wrap: wrap; } }
       `}</style>
     </div>
@@ -250,10 +250,10 @@ function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
     <button role="switch" aria-checked={on} aria-label={label} className={`sw${on ? ' on' : ''}`} onClick={() => onChange(!on)}>
       <i />
       <style jsx>{`
-                .sw { width: 28px; height: 16px; border-radius: 999px; background: var(--active); box-shadow: inset 0 0 0 1px var(--border-2); position: relative; flex: none; transition: background .2s var(--ease); }
-                .sw i { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: transform .25s var(--spring), background .2s; }
-                .sw.on { background: var(--signal); box-shadow: none; }
-                .sw.on i { transform: translateX(12px); background: #fff; }
+                .sw { width: 40px; height: 24px; border-radius: 999px; background: #7c7c7c; position: relative; flex: none; transition: background .2s var(--ease); }
+                .sw i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #000; transition: transform .2s var(--ease); }
+                .sw.on { background: var(--signal); }
+                .sw.on i { transform: translateX(16px); background: #000; }
       `}</style>
     </button>
   );

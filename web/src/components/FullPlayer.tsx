@@ -110,20 +110,22 @@ export function FullPlayer() {
       <style jsx>{`
         .fp { overflow: hidden; position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: var(--bg); transform: translateY(102%); transition: transform .5s var(--ease-out); visibility: hidden; }
         .fp.open { transform: none; visibility: visible; }
-        .ambient { position: absolute; inset: -10%; z-index: 0; background-size: cover; background-position: center; filter: blur(70px) saturate(1.4); opacity: .2; transform: scale(1.1); pointer-events: none; transition: background-image .6s; }
+        .ambient { position: absolute; inset: -10%; z-index: 0; background-size: cover; background-position: center; filter: blur(90px) saturate(1.6); opacity: .55; transform: scale(1.1); pointer-events: none; transition: background-image .6s; }
+        .fp::after { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0, 0, 0, .15), rgba(0, 0, 0, .65)); }
         .top, .body { position: relative; z-index: 1; }
-        .top { display: flex; align-items: center; justify-content: space-between; padding: 14px var(--gutter); height: var(--top-h); border-bottom: 1px solid var(--border); }
+        .top { display: flex; align-items: center; justify-content: space-between; padding: 14px var(--gutter); height: var(--top-h); }
         .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; gap: 28px; padding: 28px var(--gutter) 32px; overflow-y: auto; }
         .body.with-panel { grid-template-columns: minmax(0, 1.2fr) minmax(320px, .9fr); }
         .stage { display: flex; align-items: center; justify-content: center; gap: 56px; min-height: 0; }
-        .art { width: min(46vh, 420px); aspect-ratio: 1; flex: none; box-shadow: var(--lift-hi); border-radius: 8px; }
+        .art { width: min(46vh, 420px); aspect-ratio: 1; flex: none; box-shadow: 0 8px 40px rgba(0, 0, 0, .6); border-radius: 8px; }
         .info { width: min(480px, 100%); min-width: 0; }
-        .title { font-size: clamp(1.4rem, 2.6vw, 2rem); font-weight: 500; line-height: 1.2; letter-spacing: -.012em; }
-        .artists { margin-top: 6px; font-size: 14px; color: var(--muted); font-weight: 400; }
+        .title { font-size: clamp(1.6rem, 3vw, 2.5rem); font-weight: 900; line-height: 1.1; letter-spacing: -.03em; }
+        .artists { margin-top: 8px; font-size: 16px; color: var(--muted); font-weight: 500; }
         .artists :global(a:hover) { color: var(--text); text-decoration: underline; }
         .controls { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; max-width: 420px; }
         .on { color: var(--signal) !important; }
-        .playbig { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; background: var(--signal); color: #fff; transition: transform .3s var(--spring); }
+        .playbig { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #000; transition: transform .15s var(--ease); }
+        .playbig:hover { transform: scale(1.06); }
         .playbig:active { transform: scale(.93); }
         .spinner { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .3); border-top-color: #fff; animation: spin .8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }

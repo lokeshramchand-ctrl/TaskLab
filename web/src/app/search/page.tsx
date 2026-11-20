@@ -8,7 +8,6 @@ import type { Item } from '@/lib/types';
 import { ItemCard, ShelfTile, ShelfSkeleton, TrackRow } from '@/components/Cards';
 import { Avatar, Cover } from '@/components/Art';
 import { Bento, Tile } from '@/components/Bento';
-import { PageHeader } from '@/components/ui';
 import { Icon } from '@/components/Icon';
 import { useLibrary } from '@/player/library';
 import { usePlayer } from '@/player/store';
@@ -69,7 +68,6 @@ function SearchInner() {
 
   return (
     <Bento className="fade-in">
-      <PageHeader title="Search" sub="Songs, artists, albums and playlists from YouTube Music." />
       <form
         className="box bento-full"
         onSubmit={(e) => {
@@ -262,23 +260,24 @@ function SearchInner() {
       )}
 
       <style jsx>{`
-        .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--sp-3); }
-        .cat { height: 76px; padding: 12px; border-radius: 6px; color: #fff; font-family: var(--font-display); font-size: 14px; font-weight: 500; letter-spacing: -.005em; text-align: left; vertical-align: top; transition: transform .35s var(--spring), filter .2s; }
-        .cat:hover { filter: brightness(1.06); }
-        .cat:active { transform: scale(.97); }
-        @media (max-width: 900px) { .cats { grid-template-columns: 1fr 1fr; } }
-        .box { position: relative; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 8px 0 12px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border-2); color: var(--muted); transition: box-shadow .2s; }
-        .box:focus-within { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); color: var(--text); }
-        .box input { flex: 1; border: 0; outline: 0; background: transparent; font-size: 13px; font-weight: 400; color: var(--text); min-width: 0; }
+        .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; }
+        .cat { position: relative; overflow: hidden; height: 190px; padding: 16px; border-radius: 8px; color: #fff; font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -.01em; text-align: left; vertical-align: top; transition: transform .2s var(--ease), filter .2s; }
+        .cat::after { content: ''; position: absolute; right: -22px; bottom: -12px; width: 96px; height: 96px; border-radius: 6px; background: rgba(0, 0, 0, .22); transform: rotate(25deg); }
+        .cat:hover { filter: brightness(1.08); transform: scale(1.02); }
+        .cat:active { transform: scale(.98); }
+        @media (max-width: 900px) { .cats { grid-template-columns: 1fr 1fr; gap: 12px; } .cat { height: 100px; font-size: 18px; } }
+        .box { position: relative; display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 12px 0 16px; border-radius: 500px; background: var(--surface-2); color: var(--muted); transition: background .15s, box-shadow .15s; }
+        .box:hover { background: var(--card-hover); }
+        .box:focus-within { background: var(--card-hover); box-shadow: 0 0 0 2px var(--ink); color: var(--text); }
+        .box input { flex: 1; border: 0; outline: 0; background: transparent; font-size: 16px; font-weight: 400; color: var(--ink); min-width: 0; }
         .box input::placeholder { color: var(--muted); font-weight: 400; }
-        .sugg { position: absolute; z-index: 30; margin-top: 8px; width: min(640px, calc(100% - 2 * var(--gutter))); padding: 8px; box-shadow: var(--lift-hi); }
-        :global(.srow) { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border-radius: 4px; text-align: left; font-weight: 400; font-size: 13px; color: var(--text); }
-        :global(.srow:hover) { background: var(--surface-2); }
-                        .pills { display: flex; flex-wrap: wrap; gap: 8px; }
-        .pill { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; font-weight: 500; transition: background .2s, transform .3s var(--spring); }
-        .pill:hover { background: color-mix(in srgb, var(--surface-2) 86%, var(--text)); }
-        .pill:active { transform: scale(.97); }
-                .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 24px 20px; }
+        .sugg { position: absolute; z-index: 30; margin-top: 8px; width: min(640px, calc(100% - 2 * var(--gutter))); padding: 8px; background: var(--card-hover); border-radius: 8px; box-shadow: var(--lift-hi); }
+        :global(.srow) { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border-radius: 4px; text-align: left; font-weight: 400; font-size: 16px; color: var(--text); }
+        :global(.srow:hover) { background: var(--row-hover); }
+        .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pill { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px; border-radius: 16px; background: var(--pill); font-size: 14px; font-weight: 500; transition: background .2s; }
+        .pill:hover { background: var(--pill-hover); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 24px 20px; }
         @media (max-width: 900px) {
       `}</style>
     </Bento>
@@ -311,14 +310,14 @@ function TopResult({ item }: { item: Item }) {
   const href = hrefFor(item);
   const body = (
     <>
-      {item.kind === 'artist' ? <Avatar src={item.thumb} size={96} /> : <Cover src={item.thumb} size={96} radius={8} />}
+      {item.kind === 'artist' ? <Avatar src={item.thumb} size={92} /> : <Cover src={item.thumb} size={92} radius={4} />}
       <div>
         <div className="eyebrow">Top result · {item.kind === 'song' ? 'Song' : item.kind}</div>
         <div className="tt clamp2">{item.title}</div>
         <div className="muted clamp1">{item.kind === 'song' ? artistNames(item.artists) : item.kind === 'album' ? artistNames(item.artists) : item.subtitle}</div>
       </div>
       <style jsx>{`
-        .tt { font-size: 20px; font-weight: 500; letter-spacing: -.015em; line-height: 1.2; margin: var(--sp-1) 0; color: var(--ink); }
+        .tt { font-size: 32px; font-weight: 900; letter-spacing: -.02em; line-height: 1.15; margin: var(--sp-2) 0; color: var(--ink); }
       `}</style>
     </>
   );
@@ -336,7 +335,7 @@ function TopResult({ item }: { item: Item }) {
 function ItemGrid({ items, title }: { items: Item[]; title: string }) {
   return (
     <Tile span={12} kicker="01" title={title} sub={`${items.length} results`} label={title}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))', gap: 'var(--sp-4)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))', gap: 'var(--sp-4)' }}>
         {items.map((it) => (
           <ItemCard key={it.kind + it.id} item={it} />
         ))}

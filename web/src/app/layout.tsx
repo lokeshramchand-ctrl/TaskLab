@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Figtree } from 'next/font/google';
 import { Providers } from '@/components/Providers';
 import { StyleRegistry } from '@/components/StyleRegistry';
 import './globals.css';
 
-const sans = Inter({ subsets: ['latin'], variable: '--font-ui', display: 'swap' });
+// Figtree: an open-licence geometric sans that sits very close to Spotify's own (proprietary) Circular-based face.
+const sans = Figtree({ subsets: ['latin'], variable: '--font-ui', display: 'swap', weight: ['300', '400', '500', '600', '700', '800', '900'] });
 
 export const metadata: Metadata = {
   title: { default: 'LoMu', template: '%s · LoMu' },
@@ -20,14 +21,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#fbfbfb' },
-    { media: '(prefers-color-scheme: dark)', color: '#090909' },
+    { media: '(prefers-color-scheme: light)', color: '#ededed' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={sans.variable}>
+    <html lang="en" className={sans.variable} data-theme="dark" suppressHydrationWarning>
       <body>
         <StyleRegistry>
           <Providers>{children}</Providers>

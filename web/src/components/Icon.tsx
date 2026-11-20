@@ -8,30 +8,10 @@ import { LINEAR } from './linear-icons';
 
 export type IconName = keyof typeof ICONS | keyof typeof LINEAR;
 
-/** Existing icon names that now resolve to the Linear glyph. */
-const LINEAR_FOR: Partial<Record<keyof typeof ICONS, keyof typeof LINEAR>> = {
-  home: 'focus',
-  search: 'search',
-  library: 'views',
-  compass: 'roadmaps',
-  playlist: 'issues',
-  plus: 'add',
-  addList: 'add',
-  close: 'close',
-  user: 'account',
-  settings: 'display',
-  sliders: 'display',
-  bell: 'bell',
-  menu: 'menu',
-  grid: 'projects',
-  star: 'fav',
-  edit: 'edit',
-};
-
 export function Icon({ name, size = 16, ...rest }: { name: IconName; size?: number } & Omit<SVGProps<SVGSVGElement>, 'name'>) {
-  const key = (name in LINEAR ? name : LINEAR_FOR[name as keyof typeof ICONS]) as keyof typeof LINEAR | undefined;
-  if (key && LINEAR[key]) {
-    const { s, b } = LINEAR[key];
+  // Spotify-style glyphs (Phosphor, MIT) win; the Linear set only supplies names the Phosphor set does not have.
+  if (!(name in ICONS) && name in LINEAR) {
+    const { s, b } = LINEAR[name as keyof typeof LINEAR];
     return <svg width={size} height={size} viewBox={`0 0 ${s} ${s}`} fill="none" aria-hidden focusable="false" dangerouslySetInnerHTML={{ __html: b }} {...rest} />;
   }
   return (

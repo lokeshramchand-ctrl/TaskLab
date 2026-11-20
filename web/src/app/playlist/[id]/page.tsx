@@ -26,10 +26,12 @@ export default function PlaylistPage({ params }: { params: Promise<{ id: string 
       actions={
         <>
           <button
-            className="btn"
+            className={`icon-btn big${saved ? ' on' : ''}`}
+            aria-label={saved ? 'Remove from library' : 'Add to library'}
+            title={saved ? 'Remove from Your Library' : 'Save to Your Library'}
             onClick={() => useLibrary.getState().toggleSaved({ kind: 'playlist', id, title: data.title, subtitle: data.author, thumb: data.thumb })}
           >
-            <Icon name={saved ? 'check' : 'plus'} size={16} /> {saved ? 'Saved' : 'Save'}
+            <Icon name={saved ? 'checkCircleFill' : 'plusCircle'} size={32} />
           </button>
           <button
             className="btn"

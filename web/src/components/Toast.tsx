@@ -17,7 +17,7 @@ export function ToastHost() {
     <div key={key} className="toast fade-in" role="status">
       {msg}
       <style jsx>{`
-        .toast { position: fixed; left: 50%; bottom: calc(var(--player-h) + 40px); transform: translateX(-50%); z-index: 90; background: var(--surface); color: var(--text); border: 1px solid var(--border-2); padding: 8px 14px; border-radius: 6px; font-weight: 400; font-size: 13px; box-shadow: var(--lift-hi); }
+        .toast { position: fixed; left: 50%; bottom: calc(var(--player-h) + 40px); transform: translateX(-50%); z-index: 90; background: #ffffff; color: #000000; padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
         @media (max-width: 900px) { .toast { bottom: calc(var(--player-h) + 118px); } }
       `}</style>
     </div>

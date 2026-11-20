@@ -147,11 +147,11 @@ export function TrackMenuHost() {
         </>
       )}
       <style jsx>{`
-        .menu { position: fixed; z-index: 80; max-height: calc(100vh - 24px); overflow-y: auto; border-radius: 6px; padding: 4px; background: var(--surface); border: 1px solid var(--border-2); box-shadow: var(--lift-hi); }
-        .menu-head { padding: 6px 8px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-        :global(.menu-item) { display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px; border-radius: 4px; text-align: left; font-weight: 400; font-size: 13px; color: var(--text); }
+        .menu { position: fixed; z-index: 80; max-height: calc(100vh - 24px); overflow-y: auto; border-radius: 4px; padding: 4px; background: var(--card-hover); box-shadow: 0 16px 24px rgba(0, 0, 0, .3), 0 6px 8px rgba(0, 0, 0, .2); }
+        .menu-head { padding: 8px 12px 10px; border-bottom: 1px solid rgba(255, 255, 255, .1); margin-bottom: 4px; }
+        :global(.menu-item) { display: flex; align-items: center; gap: 12px; width: 100%; height: 40px; padding: 0 12px; border-radius: 2px; text-align: left; font-weight: 400; font-size: 14px; color: var(--text); }
         :global(.menu-item svg) { color: var(--muted); flex: none; }
-        :global(.menu-item:hover) { background: var(--active); }
+        :global(.menu-item:hover) { background: var(--row-hover); }
         :global(.menu-item:hover svg) { color: var(--text); }
         .namebox { display: flex; gap: 6px; padding: 4px; }
         .namebox input { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--border-2); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; outline: none; }

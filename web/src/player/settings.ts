@@ -34,7 +34,7 @@ const defaultHome = Object.fromEntries(HOME_SECTIONS.map((s) => [s.id, s.id !== 
 export const useSettings = create<Settings>()(
   persist(
     (set) => ({
-      theme: 'system',
+      theme: 'dark',
       sideMini: false,
       home: defaultHome,
       dev: { explore: true, streamInfo: false, artistEnrichment: true },

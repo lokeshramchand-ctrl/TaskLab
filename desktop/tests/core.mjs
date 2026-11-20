@@ -121,7 +121,7 @@ await step('radio, related, track details, lyrics, mood', async () => {
 // ------------------------------------------------------------------ UI search and playback
 await step('search box finds a song', async () => {
   await goto('/', 1500);
-  const box = page.getByPlaceholder(/Search songs/).first();
+  const box = page.getByPlaceholder(/What do you want to play/).first();
   await box.click();
   await box.fill('yellow coldplay');
   await box.press('Enter');

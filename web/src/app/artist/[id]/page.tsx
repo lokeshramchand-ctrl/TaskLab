@@ -9,6 +9,7 @@ import { Icon } from '@/components/Icon';
 import { useLibrary } from '@/player/library';
 import { usePlayer } from '@/player/store';
 import { useSettings } from '@/player/settings';
+import { useTint } from '@/lib/tint';
 
 export default function ArtistPage({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent(use(params).id);
@@ -17,6 +18,7 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
   const following = useLibrary((s) => !!s.artists[id]);
   const [bioOpen, setBioOpen] = useState(false);
   const [allSongs, setAllSongs] = useState(false);
+  useTint(null, '#535353');
   if (isLoading) return <PageSkeleton />;
   if (error || !data) return <PageError error={error} retry={() => refetch()} />;
 
@@ -33,7 +35,7 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <Bento className="fade-in">
-      <Tile span={12} tone="glow" className="hd" label="Artist header">
+      <Tile span={12} className="hd" label="Artist header">
         <div className="ph-head">
           <div className="ph-art round">
             <Avatar src={photo} size="100%" alt={data.name} />
@@ -42,33 +44,34 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
             <div className="ph-kind">Artist</div>
             <h1 className="ph-title clamp2">{data.name}</h1>
             {data.subscribers && <div className="ph-sub">{data.subscribers}</div>}
-            <div className="ph-actions">
-              <button className="btn primary lg" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}` })}>
-                <Icon name="play" size={12} /> Play
-              </button>
-              <button className="btn lg" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}`, shuffle: true })}>
-                <Icon name="shuffle" size={14} /> Shuffle
-              </button>
-              {data.topSongs[0] && (
-                <button className="btn lg" onClick={() => usePlayer.getState().playRadio(data.topSongs[0])}>
-                  <Icon name="radio" size={14} /> Radio
-                </button>
-              )}
-              <button className="btn lg" onClick={() => useLibrary.getState().toggleSaved({ kind: 'artist', id, title: data.name, thumb: photo })}>
-                <Icon name={following ? 'check' : 'plus'} size={14} /> {following ? 'Following' : 'Follow'}
-              </button>
-            </div>
           </div>
         </div>
       </Tile>
 
+      <div className="bento-full actionbar">
+        <button className="bigplay" aria-label="Play" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}` })}>
+          <Icon name="play" size={24} />
+        </button>
+        <button className="icon-btn big" aria-label="Shuffle play" title="Shuffle" disabled={!data.topSongs.length} onClick={() => usePlayer.getState().play(data.topSongs, 0, { source: `artist:${id}`, shuffle: true })}>
+          <Icon name="shuffle" size={28} />
+        </button>
+        {data.topSongs[0] && (
+          <button className="icon-btn big" aria-label="Radio" title="Start radio" onClick={() => usePlayer.getState().playRadio(data.topSongs[0])}>
+            <Icon name="radio" size={26} />
+          </button>
+        )}
+        <button className={`btn follow${following ? ' on' : ''}`} onClick={() => useLibrary.getState().toggleSaved({ kind: 'artist', id, title: data.name, thumb: photo })}>
+          {following ? 'Following' : 'Follow'}
+        </button>
+      </div>
+
       {data.topSongs.length > 0 && (
         <Tile
-          span={hasAbout ? 8 : 12}
+          span={12}
           md={12}
           flush
           kicker={k()}
-          title="Top songs"
+          title="Popular"
           sub={`${data.topSongs.length} songs`}
           label="Top songs"
           action={
@@ -88,7 +91,7 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
       )}
 
       {hasAbout && (
-        <Tile span={data.topSongs.length > 0 ? 4 : 12} md={12} kicker={k()} title="About" label="About">
+        <Tile span={12} md={12} tone="card" kicker={k()} title="About" label="About">
           {data.description && (
             <div>
               <p className={`bio${bioOpen ? '' : ' clamp4'}`}>{data.description}</p>
@@ -116,7 +119,9 @@ export default function ArtistPage({ params }: { params: Promise<{ id: string }>
       ))}
 
       <style jsx global>{`
-        .bio { margin: 0; line-height: 1.55; color: var(--text); font-size: 13px; white-space: pre-line; }
+        .bio { margin: 0; line-height: 1.55; color: var(--text); font-size: 14px; white-space: pre-line; }
+        .follow { background: transparent; box-shadow: inset 0 0 0 1px #7c7c7c; }
+        .follow:hover { box-shadow: inset 0 0 0 1px var(--ink); background: transparent; }
       `}</style>
     </Bento>
   );

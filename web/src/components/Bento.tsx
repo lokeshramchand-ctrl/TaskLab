@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from 'react';
    Every tile has the same 12px gap around it, 16px of padding inside and a 12px corner, so edges line up
    whatever the tile sizes are. Tiles follow the cursor with a soft glow along their border. */
 
-export type Tone = 'default' | 'accent' | 'glow' | 'quiet';
+export type Tone = 'default' | 'card' | 'accent' | 'glow' | 'quiet';
 
 export function Bento({ children, className = '', as: As = 'div', ...rest }: { children: ReactNode; className?: string; as?: 'div' | 'section' } & React.HTMLAttributes<HTMLElement>) {
   return (

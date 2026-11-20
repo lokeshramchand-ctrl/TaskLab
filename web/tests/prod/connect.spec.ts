@@ -47,7 +47,7 @@ test('web steers the phone, then takes playback over', async ({ page }) => {
 
   // Play something new from the web onto the phone.
   // A full page load would drop the steering, so search through the app's own box.
-  await page.getByPlaceholder('Search songs, artists, albums').fill('tum hi ho');
+  await page.getByPlaceholder('What do you want to play?').fill('tum hi ho');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(3500);
   await page.getByText('Tum Hi Ho', { exact: true }).first().click();
