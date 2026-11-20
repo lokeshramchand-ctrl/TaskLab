@@ -44,18 +44,18 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       </form>
       <style jsx>{`
         .gate { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); padding: 24px; z-index: 100; }
-        form { width: min(380px, 100%); display: flex; flex-direction: column; gap: 10px; padding: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--lift); }
+        form { width: min(360px, 100%); display: flex; flex-direction: column; gap: 8px; padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--lift-hi); }
         .mk { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-        .mark { width: 28px; height: 28px; border-radius: 9px; background: var(--ink); }
-        .mk b { font-size: 17px; font-weight: 600; letter-spacing: -.04em; }
-        h1 { font-size: 1.6rem; font-weight: 600; line-height: 1.15; margin: 0; }
+        .mark { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(180deg, var(--signal-hi), var(--signal)); }
+        .mk b { font-size: 14px; font-weight: 600; letter-spacing: -.005em; color: var(--ink); }
+        h1 { font-size: 20px; font-weight: 500; line-height: 1.3; margin: 0; letter-spacing: -.01em; }
         p { color: var(--muted); margin: 0 0 8px; }
-        input { height: 48px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border-2); background: var(--surface); color: var(--text); font: inherit; outline: none; transition: border-color .2s, box-shadow .2s; }
-        input:focus { border-color: var(--signal); box-shadow: 0 0 0 4px var(--signal-soft); }
-        button { height: 48px; border-radius: 999px; border: 0; background: var(--ink); color: var(--on-ink); font: inherit; font-weight: 500; cursor: pointer; margin-top: 4px; transition: transform .3s var(--spring); }
+        input { height: 32px; padding: 0 10px; border-radius: 5px; font-size: 13px; border: 1px solid var(--border-2); background: var(--surface); color: var(--text); font: inherit; outline: none; transition: border-color .2s, box-shadow .2s; }
+        input:focus { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); }
+        button { height: 32px; border-radius: 5px; border: 0; background: var(--signal); color: #fff; font-size: 13px; font: inherit; font-weight: 500; cursor: pointer; margin-top: 4px; transition: transform .3s var(--spring); }
         button:active { transform: scale(.97); }
         button:disabled { opacity: .4; cursor: not-allowed; }
-        .err { color: var(--red-t); font-size: 13px; background: var(--red-soft); padding: 10px 12px; border-radius: 10px; }
+        .err { color: var(--red-t); font-size: 13px; background: var(--red-soft); padding: 8px 10px; border-radius: 5px; }
       `}</style>
     </div>
   );

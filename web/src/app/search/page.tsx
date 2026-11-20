@@ -236,21 +236,21 @@ function SearchInner() {
 
       <style jsx>{`
         .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
-        .cat { height: 104px; padding: 14px; border-radius: 16px; color: #fff; font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: .01em; text-align: left; vertical-align: top; transition: transform .35s var(--spring), filter .2s; }
+        .cat { height: 76px; padding: 12px; border-radius: 6px; color: #fff; font-family: var(--font-display); font-size: 14px; font-weight: 500; letter-spacing: -.005em; text-align: left; vertical-align: top; transition: transform .35s var(--spring), filter .2s; }
         .cat:hover { filter: brightness(1.06); }
         .cat:active { transform: scale(.97); }
         @media (max-width: 900px) { .cats { grid-template-columns: 1fr 1fr; } }
-        .box { position: relative; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 10px 0 18px; border-radius: 999px; margin-top: 4px; background: var(--surface-2); border: 0; color: var(--muted); transition: box-shadow .2s; }
-        .box:focus-within { box-shadow: 0 0 0 3px var(--signal-soft); color: var(--text); }
-        .box input { flex: 1; border: 0; outline: 0; background: transparent; font-size: 16px; font-weight: 500; color: var(--text); min-width: 0; }
+        .box { position: relative; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 8px 0 12px; border-radius: 6px; margin-top: 4px; background: var(--surface); border: 1px solid var(--border-2); color: var(--muted); transition: box-shadow .2s; }
+        .box:focus-within { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); color: var(--text); }
+        .box input { flex: 1; border: 0; outline: 0; background: transparent; font-size: 13px; font-weight: 400; color: var(--text); min-width: 0; }
         .box input::placeholder { color: var(--muted); font-weight: 400; }
         .sugg { position: absolute; z-index: 30; margin-top: 8px; width: min(640px, calc(100% - 2 * var(--gutter))); padding: 8px; box-shadow: var(--lift-hi); }
-        :global(.srow) { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border-radius: 10px; text-align: left; font-weight: 500; font-size: 13.5px; color: var(--text); }
+        :global(.srow) { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border-radius: 4px; text-align: left; font-weight: 400; font-size: 13px; color: var(--text); }
         :global(.srow:hover) { background: var(--surface-2); }
         .results { margin-top: 4px; display: flex; flex-direction: column; gap: 20px; }
         .start { margin-top: 18px; display: flex; flex-direction: column; gap: 22px; }
         .pills { display: flex; flex-wrap: wrap; gap: 8px; }
-        .pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--surface-2); font-size: 13.5px; font-weight: 500; transition: background .2s, transform .3s var(--spring); }
+        .pill { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; font-weight: 500; transition: background .2s, transform .3s var(--spring); }
         .pill:hover { background: color-mix(in srgb, var(--surface-2) 86%, var(--text)); }
         .pill:active { transform: scale(.97); }
         .results :global(.chips) { align-self: flex-start; }

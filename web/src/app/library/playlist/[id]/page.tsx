@@ -53,7 +53,7 @@ export default function UserPlaylistPage({ params }: { params: Promise<{ id: str
               onBlur={save}
               onKeyDown={(e) => e.key === 'Escape' && setRenaming(false)}
               aria-label="Playlist name"
-              style={{ width: '100%', maxWidth: 520, fontSize: 'clamp(1.4rem, 2.6vw, 2rem)', fontWeight: 600, letterSpacing: '-.035em', background: 'var(--surface)', border: '1px solid var(--signal)', borderRadius: 12, padding: '4px 12px', outline: 0, boxShadow: '0 0 0 4px var(--signal-soft)' }}
+              style={{ width: '100%', maxWidth: 520, fontSize: 'clamp(1.4rem, 2.6vw, 2rem)', fontWeight: 600, letterSpacing: '-.035em', background: 'var(--surface)', border: '1px solid var(--signal)', borderRadius: 6, padding: '4px 12px', outline: 0, boxShadow: '0 0 0 4px var(--signal-soft)' }}
             />
           </form>
         ) : undefined

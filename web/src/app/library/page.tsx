@@ -197,14 +197,14 @@ export default function Library() {
         .statbtn:hover { transform: translateY(-2px); }
         .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .cnt { margin-left: 6px; font-size: 11px; font-weight: 600; opacity: .6; }
-        .filter { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px 0 12px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--surface); color: var(--muted); flex: 1; min-width: 180px; max-width: 320px; }
-        .filter:focus-within { border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-soft); color: var(--text); }
-        .filter input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13.5px; color: var(--text); }
-        .sort { height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--surface); font-size: 13px; font-weight: 500; }
-        .nameinp { width: 100%; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-2); background: var(--surface); outline: 0; }
-        .nameinp:focus { border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-soft); }
+        .filter { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); color: var(--muted); flex: 1; min-width: 180px; max-width: 320px; }
+        .filter:focus-within { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); color: var(--text); }
+        .filter input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; color: var(--text); }
+        .sort { height: 28px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); font-size: 13px; font-weight: 500; }
+        .nameinp { width: 100%; height: 28px; padding: 0 10px; border-radius: 5px; border: 1px solid var(--border-2); background: var(--surface); outline: 0; }
+        .nameinp:focus { border-color: var(--signal); box-shadow: 0 0 0 2px var(--signal-soft); }
         .hero { display: flex; align-items: center; gap: 22px; margin-bottom: 14px; }
-        .ht { font-size: 1.7rem; font-weight: 600; letter-spacing: -.04em; line-height: 1.1; margin: 4px 0; }
+        .ht { font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 1.1; margin: 4px 0; }
         .list { display: flex; flex-direction: column; gap: 1px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 24px 20px; }
         .newpl { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; aspect-ratio: 1; font-weight: 500; transition: box-shadow .25s var(--ease), transform .3s var(--spring); }

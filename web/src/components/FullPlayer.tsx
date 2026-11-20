@@ -116,16 +116,16 @@ export function FullPlayer() {
         .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; gap: 28px; padding: 28px var(--gutter) 32px; overflow-y: auto; }
         .body.with-panel { grid-template-columns: minmax(0, 1.2fr) minmax(320px, .9fr); }
         .stage { display: flex; align-items: center; justify-content: center; gap: 56px; min-height: 0; }
-        .art { width: min(46vh, 420px); aspect-ratio: 1; flex: none; box-shadow: var(--lift-hi); border-radius: 20px; }
+        .art { width: min(46vh, 420px); aspect-ratio: 1; flex: none; box-shadow: var(--lift-hi); border-radius: 8px; }
         .info { width: min(480px, 100%); min-width: 0; }
-        .title { font-size: clamp(1.7rem, 3.4vw, 2.6rem); font-weight: 600; line-height: 1.1; }
-        .artists { margin-top: 8px; font-size: 16px; color: var(--muted); font-weight: 500; }
+        .title { font-size: clamp(1.4rem, 2.6vw, 2rem); font-weight: 500; line-height: 1.2; letter-spacing: -.012em; }
+        .artists { margin-top: 6px; font-size: 14px; color: var(--muted); font-weight: 400; }
         .artists :global(a:hover) { color: var(--text); text-decoration: underline; }
         .controls { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; max-width: 420px; }
         .on { color: var(--signal) !important; }
-        .playbig { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--on-ink); transition: transform .3s var(--spring); }
+        .playbig { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; background: var(--signal); color: #fff; transition: transform .3s var(--spring); }
         .playbig:active { transform: scale(.93); }
-        .spinner { width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid color-mix(in srgb, var(--on-ink) 30%, transparent); border-top-color: var(--on-ink); animation: spin .8s linear infinite; }
+        .spinner { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .3); border-top-color: #fff; animation: spin .8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .panel { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
         .body.with-panel .stage { flex-direction: column; gap: 26px; }

@@ -67,7 +67,7 @@ export function Sheet({
         @keyframes fade { from { opacity: 0; } }
         @keyframes slide { from { transform: translateX(24px); opacity: 0; } }
         @media (max-width: 900px) {
-          .sheet { top: auto; left: 0; width: 100%; max-height: 86dvh; border-left: 0; border-top: 1px solid var(--border); border-radius: 20px 20px 0 0; animation-name: up; }
+          .sheet { top: auto; left: 0; width: 100%; max-height: 86dvh; border-left: 0; border-top: 1px solid var(--border); border-radius: 8px 8px 0 0; animation-name: up; }
           @keyframes up { from { transform: translateY(40px); opacity: 0; } }
         }
       `}</style>

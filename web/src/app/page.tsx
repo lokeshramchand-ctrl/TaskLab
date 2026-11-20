@@ -163,7 +163,7 @@ export default function Home() {
       </Sheet>
 
       <style jsx global>{`
-        .art-card { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 104px; font-size: 13px; font-weight: 500; text-align: center; border-radius: 14px; padding: 4px; transition: background .2s, transform .3s var(--spring); }
+        .art-card { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 104px; font-size: 13px; font-weight: 500; text-align: center; border-radius: 6px; padding: 4px; transition: background .2s, transform .3s var(--spring); }
         .art-card:hover { background: var(--surface); }
         .art-card:active { transform: scale(.97); }
         .art-card span { max-width: 100%; }
@@ -202,7 +202,7 @@ function QuickPicks({ tracks, personal, loading }: { tracks: Track[]; personal: 
       <section>
         <div className="qgrid">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: 64, borderRadius: 12 }} />
+            <div key={i} className="skeleton" style={{ height: 64, borderRadius: 6 }} />
           ))}
         </div>
         <style jsx>{`
