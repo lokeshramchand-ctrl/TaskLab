@@ -234,6 +234,9 @@ class MusicService :
     lateinit var lyricsHelper: LyricsHelper
 
     @Inject
+    lateinit var syncClient: com.lomu.app.sync.SyncClient
+
+    @Inject
     lateinit var mediaLibrarySessionCallback: MediaLibrarySessionCallback
 
     @Inject
@@ -1433,6 +1436,13 @@ class MusicService :
         }
     }
 
+    /**
+     * True while playQueue is still filling the player. The preloaded first song sits alone in the queue
+     * for a moment, which must not look like "the queue is about to end" and kick off radio: that radio
+     * would later replace the real queue and the song the user tapped.
+     */
+    @Volatile private var queueLoading = false
+
     fun playQueue(
         queue: Queue,
         playWhenReady: Boolean = true,
@@ -1458,12 +1468,14 @@ class MusicService :
         }
         // Reset original queue size when starting a new queue
         originalQueueSize = 0
+        queueLoading = true
         if (queue.preloadItem != null) {
             player.setMediaItem(queue.preloadItem!!.toMediaItem())
             player.prepare()
             player.playWhenReady = playWhenReady
         }
         scope.launch(SilentHandler) {
+          try {
             val initialStatus =
                 withContext(Dispatchers.IO) {
                     queue.getInitialStatus()
@@ -1471,6 +1483,8 @@ class MusicService :
                         .filterVideoSongs(dataStore.get(HideVideoSongsKey, false) || dataStore.get(DataSaverEnabledKey, false))
                 }
             if (queue.preloadItem != null && player.playbackState == STATE_IDLE) return@launch
+            // A newer queue took over while this one was loading: don't mix the two.
+            if (currentQueue !== queue) return@launch
             if (initialStatus.title != null) {
                 queueTitle = initialStatus.title
             }
@@ -1510,6 +1524,9 @@ class MusicService :
                 applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
             }
             prefetchUpcomingTracks()
+          } finally {
+            if (currentQueue === queue) queueLoading = false
+          }
         }
     }
 
@@ -1522,7 +1539,7 @@ class MusicService :
 
         val currentMediaMetadata = player.currentMetadata ?: return
 
-        val currentIndex = player.currentMediaItemIndex
+        if (queueLoading) return
         val currentMediaId = currentMediaMetadata.id
 
         scope.launch(SilentHandler) {
@@ -1550,6 +1567,10 @@ class MusicService :
                 val radioItems = initialStatus.items.filter { item ->
                     item.mediaId != currentMediaId
                 }
+
+                // The song may have changed or a new queue loaded while radio was being fetched.
+                val currentIndex = player.currentMediaItemIndex
+                if (queueLoading || player.currentMediaItem?.mediaId != currentMediaId) return@launch
 
                 if (radioItems.isNotEmpty()) {
                     val itemCount = player.mediaItemCount
@@ -1583,7 +1604,8 @@ class MusicService :
                                 .filterExplicit(dataStore.get(HideExplicitKey, false))
                                 .filterVideoSongs(dataStore.get(HideVideoSongsKey, false) || dataStore.get(DataSaverEnabledKey, false))
 
-                            if (radioItems.isNotEmpty()) {
+                            val currentIndex = player.currentMediaItemIndex
+                            if (!queueLoading && player.currentMediaItem?.mediaId == currentMediaId && radioItems.isNotEmpty()) {
                                 val itemCount = player.mediaItemCount
                                 if (itemCount > currentIndex + 1) {
                                     player.removeMediaItems(currentIndex + 1, itemCount)
@@ -3083,6 +3105,11 @@ class MusicService :
                         forceStandardAudio = forceStandardAudioMediaIds.contains(mediaId),
                     )
                 }.getOrElse { throwable ->
+                    // This phone could not resolve the stream: let the LoMu server do it and play its proxy.
+                    syncClient.streamFallback(mediaId)?.let { (url, token) ->
+                        Timber.tag(TAG).w("Local stream resolve failed for $mediaId (${throwable.message}); using the server stream")
+                        return@Factory spec.withUri(url.toUri()).withAdditionalHeaders(mapOf("Authorization" to "Bearer $token"))
+                    }
                     when (throwable) {
                         is PlaybackException -> throw throwable
 
@@ -3259,7 +3286,27 @@ class MusicService :
     // ExoPlayer state must be read on its application thread (main), so only the
     // file IO goes to the worker; the single worker serializes saves so a newer
     // snapshot can't be overwritten by an older one.
-    private fun saveQueueToDisk() {
+    private var queueSaveJob: Job? = null
+
+    /**
+     * Bursts of player events (transition, timeline, shuffle, state) used to each snapshot the whole queue on
+     * the main thread and rewrite three files. Now one save runs shortly after the first request and picks up
+     * the latest state; [immediate] (shutdown) skips the wait.
+     */
+    private fun saveQueueToDisk(immediate: Boolean = false) {
+        if (immediate) {
+            queueSaveJob?.cancel()
+            snapshotAndSaveQueue()
+            return
+        }
+        if (queueSaveJob?.isActive == true) return
+        queueSaveJob = scope.launch {
+            delay(600)
+            snapshotAndSaveQueue()
+        }
+    }
+
+    private fun snapshotAndSaveQueue() {
         val queue = currentQueue
         val title = queueTitle
         val items = player.mediaItems.mapNotNull { it.metadata }
@@ -3382,7 +3429,7 @@ class MusicService :
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         castConnectionHandler?.release()
         if (dataStore.get(PersistentQueueKey, true)) {
-            saveQueueToDisk()
+            saveQueueToDisk(immediate = true)
         }
         connectivityObserver.unregister()
         abandonAudioFocus()

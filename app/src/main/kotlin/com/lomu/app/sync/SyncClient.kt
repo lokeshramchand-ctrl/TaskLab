@@ -106,6 +106,23 @@ class SyncClient @Inject constructor(
         return r
     }
 
+    /**
+     * The server's own stream proxy for [id], with a bearer token that is good for at least a minute.
+     * Playback falls back to it when this phone cannot resolve a YouTube stream itself (bot checks, cipher
+     * changes, flaky mobile networks): the server does the resolving and the phone only plays the bytes.
+     * Blocking; call from an IO thread. Null when not signed in or the token cannot be renewed.
+     */
+    fun streamFallback(id: String): Pair<String, String>? {
+        if (!signedIn) return null
+        val exp = runCatching {
+            val payload = prefs.getString("access", null)!!.split('.')[1]
+            JSONObject(String(android.util.Base64.decode(payload, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING))).getLong("exp")
+        }.getOrDefault(0L)
+        if (exp * 1000 - System.currentTimeMillis() < 60_000 && !runCatching { refresh() }.getOrDefault(false)) return null
+        val token = prefs.getString("access", null) ?: return null
+        return (base() + "/api/stream/" + id) to token
+    }
+
     /** Authenticated JSON POST that returns the HTTP status. */
     fun postAuthed(path: String, body: JSONObject): Int = call { post(path, body, auth = true) }.first
 
