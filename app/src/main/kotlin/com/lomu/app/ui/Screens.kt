@@ -98,7 +98,7 @@ private fun CaptionedTitle(title: String, caption: String?, action: String? = nu
 @Composable
 private fun FeatureCard(thumb: String?, title: String, line: String, onClick: () -> Unit) {
     val shape = RoundedCornerShape(18.dp)
-    Box(Modifier.width(300.dp).height(360.dp).pressable(shape, onClick = onClick).background(LocalLo.current.surface2, shape)) {
+    Box(Modifier.width(248.dp).height(300.dp).pressable(shape, onClick = onClick).background(LocalLo.current.surface2, shape)) {
         AsyncImage(model = thumb, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth()
