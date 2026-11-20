@@ -190,12 +190,12 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                         Text(m?.title ?: "Nothing playing", style = LoType.title.copy(fontSize = 21.sp, lineHeight = 26.sp), color = lo.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(m?.artistLine().orEmpty(), style = LoType.body.copy(fontSize = 19.sp, lineHeight = 24.sp), color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Box(Modifier.size(32.dp).background(sub.copy(alpha = 0.25f), CircleShape).pressable(CircleShape) { haptic(true); pc.toggleLike() }, Alignment.Center) {
+                    Box(Modifier.size(34.dp).frost(CircleShape).pressable(CircleShape) { haptic(true); pc.toggleLike() }, Alignment.Center) {
                         HeartPop(liked, 18.dp, on = lo.signal, off = lo.ink)
                     }
                     if (m != null) {
                         Spacer(Modifier.width(10.dp))
-                        Box(Modifier.size(32.dp).background(sub.copy(alpha = 0.25f), CircleShape).pressable(CircleShape) { openMenu(MenuTarget(m)) }, Alignment.Center) {
+                        Box(Modifier.size(34.dp).frost(CircleShape).pressable(CircleShape) { openMenu(MenuTarget(m)) }, Alignment.Center) {
                             Ic(Ph.More, 18.dp, lo.ink)
                         }
                     }
@@ -204,15 +204,15 @@ private fun FullPlayerContent(onClose: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             SeekBar(pc)
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconBtnV(Icons.Rounded.FastRewind, { pc.seekToPrevious() }, size = 72.dp, iconSize = 52.dp)
-                PlayPauseBtn(playing, { pc.togglePlayPause() }, size = 84.dp, iconSize = 64.dp)
-                IconBtnV(Icons.Rounded.FastForward, { pc.seekToNext() }, size = 72.dp, iconSize = 52.dp)
+                Box(Modifier.size(66.dp).frost(CircleShape), Alignment.Center) { IconBtnV(Icons.Rounded.FastRewind, { pc.seekToPrevious() }, size = 66.dp, iconSize = 38.dp) }
+                Box(Modifier.size(88.dp).frost(CircleShape, strong = true), Alignment.Center) { PlayPauseBtn(playing, { pc.togglePlayPause() }, size = 88.dp, iconSize = 54.dp) }
+                Box(Modifier.size(66.dp).frost(CircleShape), Alignment.Center) { IconBtnV(Icons.Rounded.FastForward, { pc.seekToNext() }, size = 66.dp, iconSize = 38.dp) }
             }
             VolumeBar()
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconBtnV(Icons.Rounded.ChatBubbleOutline, { mode = if (mode == 1) 0 else 1 }, size = 48.dp, iconSize = 24.dp, tint = if (mode == 1) lo.signal else sub)
-                IconBtnV(Icons.Rounded.Devices, LocalOpenDevices.current, size = 48.dp, iconSize = 24.dp, tint = sub)
-                IconBtnV(Icons.Rounded.FormatListBulleted, { mode = if (mode == 2) 0 else 2 }, size = 48.dp, iconSize = 24.dp, tint = if (mode == 2) lo.signal else sub)
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 14.dp).frost(RoundedCornerShape(32.dp)).padding(horizontal = 6.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                BottomChip(Icons.Rounded.ChatBubbleOutline, mode == 1) { mode = if (mode == 1) 0 else 1 }
+                BottomChip(Icons.Rounded.Devices, false, LocalOpenDevices.current)
+                BottomChip(Icons.Rounded.FormatListBulleted, mode == 2) { mode = if (mode == 2) 0 else 2 }
             }
         }
     }
@@ -396,4 +396,18 @@ private fun QueuePanel(pc: PlayerConnection) {
             ) { pc.player.seekToDefaultPosition(i) }
         }
     }
+}
+
+/** Apple Music style frosted glass: a faint white gradient fill with a light rim, so the artwork wash shows through. */
+private fun Modifier.frost(shape: androidx.compose.ui.graphics.Shape, strong: Boolean = false): Modifier =
+    background(Brush.verticalGradient(listOf(Color.White.copy(alpha = if (strong) 0.30f else 0.22f), Color.White.copy(alpha = if (strong) 0.14f else 0.09f))), shape)
+        .border(0.7.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.40f), Color.White.copy(alpha = 0.06f))), shape)
+
+/** Bottom bar button: a glass capsule behind the glyph when it is the active mode. */
+@Composable
+private fun BottomChip(icon: ImageVector, active: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(width = 64.dp, height = 44.dp).then(if (active) Modifier.background(Color.White.copy(alpha = 0.24f), RoundedCornerShape(24.dp)) else Modifier).pressable(RoundedCornerShape(24.dp), onClick = onClick),
+        Alignment.Center,
+    ) { IcV(icon, 24.dp, if (active) Color.White else Color.White.copy(alpha = 0.78f)) }
 }
