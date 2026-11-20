@@ -164,25 +164,6 @@ fun rememberTint(url: String?): Color? {
     return tint
 }
 
-/** Up to three distinct swatches of an artwork (vibrant first), for multi-colour washes. Empty until the image has been read. */
-@Composable
-fun rememberPalette(url: String?): List<Color> {
-    val ctx = LocalContext.current
-    val colors by produceState<List<Color>>(emptyList(), url) {
-        if (url == null) { value = emptyList(); return@produceState }
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                val req = ImageRequest.Builder(ctx).data(url).size(96).allowHardware(false).build()
-                val bmp = SingletonImageLoader.get(ctx).execute(req).image?.toBitmap() ?: return@runCatching emptyList()
-                val p = Palette.from(bmp).maximumColorCount(24).generate()
-                listOfNotNull(p.vibrantSwatch, p.lightVibrantSwatch, p.darkVibrantSwatch, p.mutedSwatch, p.dominantSwatch)
-                    .map { it.rgb }.distinct().take(3).map { Color(it) }
-            }.getOrDefault(emptyList())
-        }
-    }
-    return colors
-}
-
 /** 0.5dp separator, inset from the left so it starts under the text, as in Apple Music lists. */
 @Composable
 fun Hairline(inset: Dp = 0.dp, modifier: Modifier = Modifier) {
@@ -573,38 +554,5 @@ object UiPrefs {
     fun setShowNew(ctx: android.content.Context, on: Boolean) {
         newTab = on
         ctx.getSharedPreferences("lomu", android.content.Context.MODE_PRIVATE).edit().putBoolean("showNewTab", on).apply()
-    }
-}
-
-/**
- * Soft drifting pools of colour for a page background (Home). Colours come from the artwork on the page, cross-fade when they
- * change, and drift very slowly. Only the draw phase is invalidated by the drift, and it stops when the page leaves composition.
- */
-@Composable
-fun ColorPools(colors: List<Color?>, modifier: Modifier = Modifier) {
-    val lo = LocalLo.current
-    val fallback = listOf(lo.signal, Color(0xFFAF52DE), Color(0xFFFF2D55))
-    val anim = List(3) { i ->
-        androidx.compose.animation.animateColorAsState(colors.getOrNull(i) ?: fallback[i], androidx.compose.animation.core.tween(1400), label = "pool$i").value
-    }
-    val t by androidx.compose.animation.core.rememberInfiniteTransition(label = "pools").animateFloat(
-        0f, 1f,
-        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(45000, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse),
-        label = "poolsT",
-    )
-    val a = if (lo.dark) 0.62f else 0.42f
-    Box(
-        modifier.fillMaxWidth().height(560.dp).drawBehind {
-            val spots = listOf(0.15f to 0.05f, 0.9f to 0.22f, 0.4f to 0.5f)
-            anim.forEachIndexed { i, c ->
-                val (bx, by) = spots[i]
-                val ph = (t + i * 0.33f) * 6.2832f
-                val center = androidx.compose.ui.geometry.Offset(size.width * (bx + 0.10f * kotlin.math.sin(ph)), size.height * (by + 0.07f * kotlin.math.cos(ph)))
-                val r = size.width * 0.95f
-                drawCircle(Brush.radialGradient(listOf(c.copy(alpha = a), Color.Transparent), center, r), r, center)
-            }
-        },
-    ) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to lo.bg)))
     }
 }

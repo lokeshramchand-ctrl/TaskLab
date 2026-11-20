@@ -134,15 +134,6 @@ fun HomeScreen() {
         recsLoaded = true
     }
     val state by load("home") { YouTube.home() }
-    // Pools of colour taken from the artwork the page is showing: top picks first, then recent likes.
-    val poolUrls = (recs.flatMap { it.tracks.take(1) }.map { it.thumbnailUrl } + recent.map { it.song.thumbnailUrl }).filterNotNull().distinct().take(3)
-    val pageTints = listOf(rememberTint(poolUrls.getOrNull(0)), rememberTint(poolUrls.getOrNull(1)), rememberTint(poolUrls.getOrNull(2)))
-    // Dynamic: while something plays the pools follow that song's own poster colours; otherwise the page's artwork.
-    val nowMeta = player?.mediaMetadata?.collectAsState()?.value
-    val nowColors = rememberPalette(nowMeta?.thumbnailUrl)
-    val poolColors = if (nowColors.size >= 2) nowColors else pageTints
-    Box(Modifier.fillMaxSize()) {
-    ColorPools(poolColors)
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
         item { TitleBar("Home") }
         val top = recs.firstOrNull()
@@ -189,7 +180,6 @@ fun HomeScreen() {
             is Load.Err -> item { ErrorBox(st.message) }
             is Load.Ok -> items(st.value.sections.take(3)) { Shelf(it.title, it.items) }
         }
-    }
     }
 }
 
