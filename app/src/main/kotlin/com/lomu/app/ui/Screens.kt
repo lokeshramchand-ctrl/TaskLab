@@ -763,6 +763,15 @@ fun SettingsScreen() {
                 }
             }
         }
+        Group("Tabs", footer = "Show the New tab (YouTube Music's open feed) in the bottom bar.") {
+            val ctx = LocalContext.current
+            Cell {
+                IconTile(Ph.Sparkles, Color(0xFFFF9500))
+                Spacer(Modifier.width(14.dp))
+                Text("New tab", style = LoType.body, color = lo.ink, modifier = Modifier.weight(1f))
+                androidx.compose.material3.Switch(UiPrefs.showNew(ctx), { UiPrefs.setShowNew(ctx, it) })
+            }
+        }
         Group("Library", footer = "Copy your liked songs and playlists once. The Google session is discarded afterwards.") {
             Cell(Modifier.pressable(RoundedCornerShape(0.dp)) { nav.push(Screen.Import) }) {
                 IconTile(Ph.Download, Color(0xFF34C759))

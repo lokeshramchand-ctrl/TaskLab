@@ -38,6 +38,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +53,16 @@ import com.lomu.app.extensions.metadata
 import com.lomu.app.models.MediaMetadata
 import com.lomu.app.playback.PlayerConnection
 import kotlinx.coroutines.delay
+
+/** Pushes an artwork colour to a rich, saturated mid-dark tone so the player wash is strong but white text stays readable. */
+private fun playerTint(c: Color?): Color? {
+    c ?: return null
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(android.graphics.Color.argb(255, (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt()), hsv)
+    hsv[1] = hsv[1].coerceAtLeast(0.6f)
+    hsv[2] = hsv[2].coerceIn(0.5f, 0.78f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
 
 private fun MediaMetadata.artistLine() = artists.joinToString(", ") { it.name }
 
@@ -106,8 +120,10 @@ private fun FullPlayerContent(onClose: () -> Unit) {
 
     val (dragY, dragMod) = rememberDismissDrag(onClose)
     Box(Modifier.fillMaxSize().graphicsLayer { translationY = dragY.value; alpha = 1f - (dragY.value / (size.height * 2f)).coerceIn(0f, 0.4f) }.background(lo.bg)) {
-        // Tinted wash taken from the artwork, as in the reference player.
-        Ambient(m?.thumbnailUrl, height = 900.dp, strength = 0.78f)
+        // Strong colour wash taken from the artwork; it cross-fades slowly when the song changes.
+        val tint by animateColorAsState(playerTint(rememberTint(m?.thumbnailUrl)) ?: lo.bg, tween(900), label = "playerTint")
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tint, 0.55f to tint.copy(alpha = 0.55f).compositeOver(lo.bg), 1f to lo.bg)))
+        Ambient(m?.thumbnailUrl, height = 900.dp, strength = 0.5f)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
             // grabber
             // The bar at the top: tap or pull down to close. The hit area is much taller than the bar itself.
@@ -139,7 +155,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                 Box(Modifier.weight(1f).fillMaxWidth()) { QueuePanel(pc) }
             } else {
                 Box(Modifier.weight(1f).fillMaxWidth().then(if (mode == 0) dragMod else Modifier), Alignment.Center) {
-                    if (mode == 0) Artwork(m?.thumbnailUrl, playing) else LyricsPanel(pc, m)
+                    if (mode == 0) Artwork(m?.thumbnailUrl, playing, tint) else LyricsPanel(pc, m)
                 }
                 Spacer(Modifier.height(18.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -185,10 +201,12 @@ private fun ToggleChip(icon: ImageVector, on: Boolean, onClick: () -> Unit) {
 
 /** Big square artwork that gently shrinks while paused, with a soft drop shadow. */
 @Composable
-private fun Artwork(url: String?, playing: Boolean) {
+private fun Artwork(url: String?, playing: Boolean, glow: Color) {
     val scale by animateFloatAsState(if (playing) 1f else 0.86f, spring(dampingRatio = 0.7f, stiffness = 300f), label = "art")
     BoxWithConstraints(Modifier.fillMaxSize(), Alignment.Center) {
         val side = minOf(maxWidth, maxHeight)
+        // Coloured glow behind the cover, then the cover itself.
+        Box(Modifier.size(side * 0.86f).graphicsLayer { scaleX = scale; scaleY = scale; translationY = 24f }.blur(48.dp).background(glow.copy(alpha = 0.85f), RoundedCornerShape(40.dp)))
         Box(Modifier.size(side).graphicsLayer { scaleX = scale; scaleY = scale }.coverShadow(14.dp, 24.dp)) { Cover(url, side, radius = 14.dp) }
     }
 }

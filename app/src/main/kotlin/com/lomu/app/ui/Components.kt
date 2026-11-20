@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
@@ -539,3 +540,18 @@ val LocalBottomInset = compositionLocalOf { 0.dp }
 
 @Composable
 fun bottomPad(): Dp = LocalBottomInset.current + 24.dp
+
+/** Small UI switches kept in SharedPreferences, readable from composables. */
+object UiPrefs {
+    private var newTab by androidx.compose.runtime.mutableStateOf<Boolean?>(null)
+
+    /** The New tab is hidden by default; Settings → Tabs turns it on. */
+    @Composable
+    fun showNew(ctx: android.content.Context): Boolean =
+        newTab ?: ctx.getSharedPreferences("lomu", android.content.Context.MODE_PRIVATE).getBoolean("showNewTab", false)
+
+    fun setShowNew(ctx: android.content.Context, on: Boolean) {
+        newTab = on
+        ctx.getSharedPreferences("lomu", android.content.Context.MODE_PRIVATE).edit().putBoolean("showNewTab", on).apply()
+    }
+}

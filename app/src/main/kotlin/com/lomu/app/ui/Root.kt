@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
@@ -169,9 +170,9 @@ private data class TabDef(val label: String, val on: ImageVector, val off: Image
 @Composable
 private fun TabBar(nav: Nav) {
     val lo = LocalLo.current
-    val tabs = listOf(
+    val tabs = listOfNotNull(
         TabDef("Home", SfIcons.HouseFill, SfIcons.HouseFill, Screen.Home),
-        TabDef("New", Icons.Filled.GridView, Icons.Filled.GridView, Screen.New),
+        if (UiPrefs.showNew(LocalContext.current)) TabDef("New", Icons.Filled.GridView, Icons.Filled.GridView, Screen.New) else null,
         TabDef("Library", Icons.Filled.LibraryMusic, Icons.Filled.LibraryMusic, Screen.Library),
         TabDef("Search", Icons.Rounded.Search, Icons.Rounded.Search, Screen.Search),
     )
