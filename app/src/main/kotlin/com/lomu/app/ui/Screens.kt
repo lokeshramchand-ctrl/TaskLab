@@ -235,7 +235,7 @@ fun SearchScreen() {
     val open = rememberOpen()
     Column(Modifier.fillMaxSize()) {
         TitleBar("Search")
-        SearchField(text, { text = it; if (it.isBlank()) submitted = "" }, "Apple Music", { submit(text) }, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+        SearchField(text, { text = it; if (it.isBlank()) submitted = "" }, "Search", { submit(text) }, Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
         val summaries = when (val r0 = result) { is Load.Ok -> r0.value?.summaries.orEmpty(); else -> emptyList() }
         if (submitted.isNotBlank() && suggestions.isEmpty() && summaries.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
