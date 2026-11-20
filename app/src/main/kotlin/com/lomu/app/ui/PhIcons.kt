@@ -56,8 +56,24 @@ enum class Ph(internal val path: String) {
     AddList("M32,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H40A8,8,0,0,1,32,64Zm8,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16Zm104,48H40a8,8,0,0,0,0,16H144a8,8,0,0,0,0-16Zm88,0H216V168a8,8,0,0,0-16,0v16H184a8,8,0,0,0,0,16h16v16a8,8,0,0,0,16,0V200h16a8,8,0,0,0,0-16Z");
 
     val vector: ImageVector by lazy {
-        ImageVector.Builder(name = name, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 256f, viewportHeight = 256f)
+        // Where the web player uses a Linear glyph (see web/src/components/Icon.tsx), use the same one here.
+        linear()?.vector ?: ImageVector.Builder(name = name, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 256f, viewportHeight = 256f)
             .addPath(PathParser().parsePathString(path).toNodes(), fill = SolidColor(Color.Black))
             .build()
     }
+}
+
+/** Same mapping as `LINEAR_FOR` in the web player's Icon.tsx. */
+private fun Ph.linear(): Lin? = when (this) {
+    Ph.Home -> Lin.Focus
+    Ph.Search -> Lin.Search
+    Ph.Library -> Lin.Views
+    Ph.Compass -> Lin.Roadmaps
+    Ph.Playlist -> Lin.Issues
+    Ph.Plus, Ph.AddList -> Lin.Add
+    Ph.Close -> Lin.Close
+    Ph.User -> Lin.Account
+    Ph.Settings -> Lin.Display
+    Ph.Edit -> Lin.Edit
+    else -> null
 }

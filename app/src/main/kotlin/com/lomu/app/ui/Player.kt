@@ -54,6 +54,7 @@ import com.lomu.app.models.MediaMetadata
 import com.lomu.app.playback.PlayerConnection
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.lomu.app.utils.HiResArt
 import androidx.compose.animation.core.Animatable
 
 /** Pushes an artwork colour to a rich, saturated mid-dark tone so the player wash is strong but white text stays readable. */
@@ -102,7 +103,8 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
 
 /** The player is always dark with white controls over the tinted artwork, in both themes. */
 @Composable
-fun FullPlayer(onClose: () -> Unit) = CompositionLocalProvider(LocalLo provides DarkLo) { FullPlayerContent(onClose) }
+// Secondary text is translucent white rather than grey, so it stays readable on a bright artwork wash too.
+fun FullPlayer(onClose: () -> Unit) = CompositionLocalProvider(LocalLo provides DarkLo.copy(grey = Color.White.copy(alpha = 0.72f))) { FullPlayerContent(onClose) }
 
 @Composable
 private fun FullPlayerContent(onClose: () -> Unit) {
@@ -121,14 +123,19 @@ private fun FullPlayerContent(onClose: () -> Unit) {
     val sub = lo.grey
 
     val (dragY, dragMod) = rememberDismissDrag(onClose)
+    // Best artwork available: official 3000px album art when found, else the 4K YouTube image. Shows the fallback until it resolves.
+    val art by produceState<String?>(HiResArt.fallback(m?.thumbnailUrl), m?.id) {
+        value = HiResArt.fallback(m?.thumbnailUrl)
+        m?.let { value = HiResArt.best(it.title, it.artists.map { a -> a.name }, it.thumbnailUrl) }
+    }
     // Swipe the artwork sideways: left = next song, right = previous. The cover follows the finger and springs back.
     val skipX = remember { Animatable(0f) }
     val skipScope = rememberCoroutineScope()
     Box(Modifier.fillMaxSize().graphicsLayer { translationY = dragY.value; alpha = 1f - (dragY.value / (size.height * 2f)).coerceIn(0f, 0.4f) }.background(lo.bg)) {
         // Strong colour wash taken from the artwork; it cross-fades slowly when the song changes.
-        val tint by animateColorAsState(playerTint(rememberTint(m?.thumbnailUrl)) ?: lo.bg, tween(900), label = "playerTint")
+        val tint by animateColorAsState(playerTint(rememberTint(art)) ?: lo.bg, tween(900), label = "playerTint")
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to tint, 0.75f to tint.copy(alpha = 0.92f).compositeOver(lo.bg), 1f to lo.bg)))
-        Ambient(m?.thumbnailUrl, height = 900.dp, strength = 0.85f)
+        Ambient(art, height = 900.dp, strength = 0.85f)
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) {
             // grabber
             // The bar at the top: tap or pull down to close. The hit area is much taller than the bar itself.
@@ -175,7 +182,7 @@ private fun FullPlayerContent(onClose: () -> Unit) {
                         }),
                     Alignment.Center,
                 ) {
-                    if (mode == 0) Box(Modifier.fillMaxSize().graphicsLayer { translationX = skipX.value * 0.7f; rotationZ = skipX.value / 60f }) { Artwork(m?.thumbnailUrl, playing, tint) } else LyricsPanel(pc, m)
+                    if (mode == 0) Box(Modifier.fillMaxSize().graphicsLayer { translationX = skipX.value * 0.7f; rotationZ = skipX.value / 60f }) { Artwork(art, playing, tint) } else LyricsPanel(pc, m)
                 }
                 Spacer(Modifier.height(18.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

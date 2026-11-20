@@ -171,10 +171,10 @@ private data class TabDef(val label: String, val on: ImageVector, val off: Image
 private fun TabBar(nav: Nav) {
     val lo = LocalLo.current
     val tabs = listOfNotNull(
-        TabDef("Home", SfIcons.HouseFill, SfIcons.HouseFill, Screen.Home),
-        if (UiPrefs.showNew(LocalContext.current)) TabDef("New", Icons.Filled.GridView, Icons.Filled.GridView, Screen.New) else null,
-        TabDef("Library", Icons.Filled.LibraryMusic, Icons.Filled.LibraryMusic, Screen.Library),
-        TabDef("Search", Icons.Rounded.Search, Icons.Rounded.Search, Screen.Search),
+        TabDef("Home", Lin.Focus.vector, Lin.Focus.vector, Screen.Home),
+        if (UiPrefs.showNew(LocalContext.current)) TabDef("New", Lin.Projects.vector, Lin.Projects.vector, Screen.New) else null,
+        TabDef("Library", Lin.Views.vector, Lin.Views.vector, Screen.Library),
+        TabDef("Search", Lin.Search.vector, Lin.Search.vector, Screen.Search),
     )
     val shape = RoundedCornerShape(36.dp)
     val haptic = rememberHaptic()
