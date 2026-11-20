@@ -200,6 +200,7 @@ fun DevicesSheet(onDismiss: () -> Unit) {
                 val on = remote?.id == d.id
                 DeviceRow(deviceIcon(d), d.name, (if (d.playing) "Playing" else if (d.track != null) "Paused" else "Idle") + (d.track?.let { " · ${it.title}" } ?: ""), on, d.playing) { c.transferTo(d.id); sheet.dismiss() }
             }
+            if (others.isEmpty()) DeviceRow(Icons.Rounded.Language, "Web", "Offline", false, false) { }
     }
 }
 
