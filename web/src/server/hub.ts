@@ -106,7 +106,8 @@ export async function connectHub(url: string, username: string, password: string
       body: JSON.stringify({ username, password }),
       signal: AbortSignal.timeout(20_000),
     });
-  } catch {
+  } catch (e) {
+    console.error('[hub] could not reach', u, (e as { cause?: unknown }).cause ?? e);
     throw new Error("Can't reach that server. Check the address and your internet connection.");
   }
   const j = (await r.json().catch(() => ({}))) as { access?: string; refresh?: string; error?: string };

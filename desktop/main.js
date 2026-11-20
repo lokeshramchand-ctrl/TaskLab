@@ -76,8 +76,8 @@ async function startServer() {
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1', // run Electron's own Node, no separate install needed
-      // The server's dependencies are shipped as "lib_modules" (see scripts/prepare.mjs).
-      NODE_PATH: [path.join(path.dirname(serverJs), 'lib_modules'), path.join(serverDir, 'lib_modules')].join(path.delimiter),
+      // Electron hides NODE_OPTIONS from the app, so extra Node flags for the server (diagnostics, tests) go through here.
+      ...(process.env.LOMU_SERVER_NODE_OPTIONS ? { NODE_OPTIONS: process.env.LOMU_SERVER_NODE_OPTIONS } : {}),
       NODE_ENV: 'production',
       NEXT_TELEMETRY_DISABLED: '1',
       PORT: String(port),

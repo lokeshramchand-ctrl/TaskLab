@@ -34,6 +34,15 @@ describe('sync log', () => {
     expect(sync.all('playlist')[0].value.name).toBe('new');
   });
 
+  it('ignores a write that changes nothing, so re-offering a whole library does not re-stamp it', () => {
+    const first = sync.push([{ kind: 'saved', key: 's1', value: { a: 1 }, updated: 400 }]);
+    const again = sync.push([{ kind: 'saved', key: 's1', value: { a: 1 }, updated: 400 }]);
+    expect(first.applied).toBe(1);
+    expect(again.applied).toBe(0);
+    expect(again.seq).toBe(first.seq);
+    expect(sync.push([{ kind: 'saved', key: 's1', value: { a: 2 }, updated: 400 }]).applied).toBe(1); // same time, new content: kept
+  });
+
   it('tombstones propagate and hide from live queries', () => {
     sync.push([{ kind: 'like', key: 'a', value: null, updated: 300, deleted: true }]);
     const docs = sync.pull(0).docs;

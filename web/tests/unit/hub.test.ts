@@ -12,6 +12,8 @@ const hubDocs = new Map<string, Doc & { seq: number }>();
 let hubSeq = 0;
 let up = true;
 let logins = 0;
+let accessOk = 'a';
+let refreshes = 0;
 let port = 0;
 let srv: http.Server;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lomu-hub-test-'));
@@ -26,7 +28,8 @@ beforeAll(async () => {
     const url = new URL(req.url!, 'http://x');
     const send = (code: number, o: unknown) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
     if (url.pathname === '/api/auth/login') { logins++; return send(200, { access: 'a', refresh: 'r', user: 'me' }); }
-    if (req.headers.authorization !== 'Bearer a') return send(401, { error: 'unauthorized' });
+    if (url.pathname === '/api/auth/refresh') { refreshes++; accessOk = 'b'; return send(200, { access: 'b', refresh: 'r2' }); }
+    if (req.headers.authorization !== 'Bearer ' + accessOk) return send(401, { error: 'unauthorized' });
     if (url.pathname === '/api/sync' && req.method === 'GET') {
       const since = Number(url.searchParams.get('since') ?? 0);
       const docs = [...hubDocs.values()].filter((d) => d.seq > since).sort((a, b) => a.seq - b.seq);
@@ -96,6 +99,17 @@ describe('hub sync worker', () => {
     await hub.syncHub();
     expect(sync.all('like').map((d) => d.key)).toEqual(['h1']); // l1 deleted on the hub (newer), h1 kept
     expect(hubDocs.get('like:h1')?.value).toEqual({ from: 'pc-newer' });
+  });
+
+  it('renews an expired access token with the refresh token and carries on', async () => {
+    const sync = await import('@/server/sync');
+    const hub = await import('@/server/hub');
+    accessOk = 'expired-for-everyone-but-b'; // the stored access token ('a') is now rejected
+    sync.push([{ kind: 'search', key: 'after-expiry', value: { q: 1 }, updated: 700 }]);
+    await hub.syncHub();
+    expect(refreshes).toBe(1);
+    expect(hub.hubStatus().state).toBe('online');
+    expect(hubDocs.has('search:after-expiry')).toBe(true);
   });
 
   it('disconnect stops syncing', async () => {

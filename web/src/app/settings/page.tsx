@@ -161,7 +161,7 @@ function HubGroup({ kicker }: { kicker: string }) {
   const hint = !connected
     ? 'This PC works on its own. Connect your home server to share likes, playlists and history with your phone.'
     : hub!.state === 'offline'
-      ? `Everything is saved on this PC and will sync when ${new URL(hub!.url!).host} is back${hub!.pending ? ` (${hub!.pending} changes waiting)` : ''}.`
+      ? `Everything is saved on this PC and will sync when ${new URL(hub!.url!).host} is back${hub!.pending ? ` (${hub!.pending} ${hub!.pending === 1 ? 'change' : 'changes'} waiting)` : ''}.`
       : hub!.state === 'error'
         ? hub!.error ?? 'Sync failed.'
         : `${hub!.user} on ${new URL(hub!.url!).host}${hub!.lastSync ? ` · last sync ${new Date(hub!.lastSync).toLocaleTimeString()}` : ''}${hub!.pending ? ` · ${hub!.pending} waiting` : ''}`;

@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktop = path.resolve(here, '..');
 const web = path.resolve(desktop, '..', 'web');
-const out = path.join(desktop, 'build', 'server');
+const root = path.join(desktop, 'build', 'server');
+// electron-builder silently drops a top-level "node_modules" from extra resources, so the standalone server lives one
+// level down (server/app/node_modules), which it keeps. (NODE_PATH is no use here: ES modules ignore it.)
+const out = path.join(root, 'app');
 
 if (!process.argv.includes('--skip-build')) {
   console.log('> building the web app');
@@ -22,7 +25,7 @@ if (!fs.existsSync(standalone)) {
   process.exit(1);
 }
 
-fs.rmSync(out, { recursive: true, force: true });
+fs.rmSync(root, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 fs.cpSync(standalone, out, { recursive: true, dereference: true });
 
@@ -47,15 +50,10 @@ if (!entryDir) {
 for (const junk of ['src', 'tests', 'scripts', 'test-results', 'Dockerfile', '.dockerignore', 'package-lock.json', 'next.config.ts', 'playwright.config.ts', 'playwright.prod.config.ts', 'vitest.config.ts', 'tsconfig.json', 'tsconfig.tsbuildinfo', 'next-env.d.ts']) {
   fs.rmSync(path.join(entryDir, junk), { recursive: true, force: true });
 }
-// electron-builder silently drops any top-level "node_modules" folder from extra resources, so the server's
-// dependencies travel as "lib_modules" and the app points NODE_PATH at them (see main.js).
-for (const d of new Set([out, entryDir])) {
-  if (fs.existsSync(path.join(d, 'node_modules'))) fs.renameSync(path.join(d, 'node_modules'), path.join(d, 'lib_modules'));
-}
 fs.cpSync(path.join(web, '.next', 'static'), path.join(entryDir, '.next', 'static'), { recursive: true });
 if (fs.existsSync(path.join(web, 'public'))) fs.cpSync(path.join(web, 'public'), path.join(entryDir, 'public'), { recursive: true });
-fs.writeFileSync(path.join(out, 'entry.json'), JSON.stringify({ entry: path.relative(out, path.join(entryDir, 'server.js')).split(path.sep).join('/') }));
+fs.writeFileSync(path.join(root, 'entry.json'), JSON.stringify({ entry: path.relative(root, path.join(entryDir, 'server.js')).split(path.sep).join('/') }));
 
 fs.mkdirSync(path.join(desktop, 'build'), { recursive: true });
 fs.copyFileSync(path.join(web, 'public', 'icon-512.png'), path.join(desktop, 'build', 'icon.png'));
-console.log('> local server ready in', path.relative(process.cwd(), out));
+console.log('> local server ready in', path.relative(process.cwd(), root));

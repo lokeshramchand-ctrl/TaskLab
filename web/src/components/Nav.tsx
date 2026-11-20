@@ -163,7 +163,7 @@ export function Sidebar() {
           <div className="user hide-mini">
             <span className="av">{user[0]?.toUpperCase()}</span>
             <div className="grow">
-              <div className="clamp1 who">{user}</div>
+              <div className="clamp1 who">{local ? 'This PC' : user}</div>
               <div className="st">
                 <i className={`dot ${sync}`} />
                 {sync === 'live' ? 'Synced' : sync === 'syncing' ? 'Syncing…' : sync === 'error' ? 'Offline' : 'Local'}

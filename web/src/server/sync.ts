@@ -36,7 +36,7 @@ export function push(docs: Doc[]): { seq: number; applied: number } {
   const d = db();
   let seq = currentSeq();
   let applied = 0;
-  const get = d.prepare('SELECT updated FROM docs WHERE kind = ? AND key = ?');
+  const get = d.prepare('SELECT updated, value, deleted FROM docs WHERE kind = ? AND key = ?');
   const put = d.prepare(
     `INSERT INTO docs (kind, key, value, updated, deleted, seq) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(kind, key) DO UPDATE SET value = excluded.value, updated = excluded.updated, deleted = excluded.deleted, seq = excluded.seq`,
@@ -46,11 +46,15 @@ export function push(docs: Doc[]): { seq: number; applied: number } {
     for (const doc of docs.slice(0, 5000)) {
       if (!KINDS.has(doc.kind) || typeof doc.key !== 'string' || !doc.key || doc.key.length > 200) continue;
       const updated = Number(doc.updated) || Date.now();
-      const cur = get.get(doc.kind, doc.key) as { updated: number } | undefined;
+      const cur = get.get(doc.kind, doc.key) as { updated: number; value: string | null; deleted: number } | undefined;
       if (cur && cur.updated > updated) continue; // an newer write already won
       const json = doc.deleted || doc.value == null ? null : JSON.stringify(doc.value);
       if (json && json.length > 200_000) continue;
-      put.run(doc.kind, doc.key, json, updated, doc.deleted || json === null ? 1 : 0, ++seq);
+      const del = doc.deleted || json === null ? 1 : 0;
+      // A client that re-offers its whole library (every start-up does) must not re-stamp documents that did not
+      // change: that would make every other device pull the whole log again.
+      if (cur && cur.updated === updated && cur.value === json && cur.deleted === del) continue;
+      put.run(doc.kind, doc.key, json, updated, del, ++seq);
       applied++;
     }
     d.exec('COMMIT');

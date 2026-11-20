@@ -31,7 +31,8 @@ export function TrackMenuHost() {
   const { track, x, y, close, playlistId, playlistIndex } = useMenu();
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<'main' | 'playlists'>('main');
+  const [mode, setMode] = useState<'main' | 'playlists' | 'name'>('main');
+  const [newName, setNewName] = useState('');
   const lib = useLibrary();
 
   useEffect(() => {
@@ -120,20 +121,26 @@ export function TrackMenuHost() {
           {album && <Item icon="disc" label="Go to album" onClick={() => go(`/album/${album.id}`)} />}
           <Item icon="share" label="Share" onClick={share} />
         </>
+      ) : mode === 'name' ? (
+        // An inline field: window.prompt() does not exist in the desktop app (Electron).
+        <form
+          className="namebox"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const name = newName.trim();
+            if (name) {
+              lib.createPlaylist(name, [track]);
+              toast(`Added to ${name}`);
+            }
+            close();
+          }}
+        >
+          <input autoFocus aria-label="Playlist name" placeholder="Playlist name" value={newName} maxLength={80} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && (e.stopPropagation(), setMode('playlists'))} />
+          <button type="submit" disabled={!newName.trim()}>Create</button>
+        </form>
       ) : (
         <>
-          <Item
-            icon="plus"
-            label="New playlist"
-            onClick={() => {
-              const name = prompt('Playlist name');
-              if (name) {
-                lib.createPlaylist(name, [track]);
-                toast(`Added to ${name}`);
-              }
-              close();
-            }}
-          />
+          <Item icon="plus" label="New playlist" onClick={() => setMode('name')} />
           {lib.playlists.map((p) => (
             <Item key={p.id} icon="playlist" label={p.name} onClick={() => (lib.addToPlaylist(p.id, [track]), toast(`Added to ${p.name}`), close())} />
           ))}
@@ -146,6 +153,11 @@ export function TrackMenuHost() {
         :global(.menu-item svg) { color: var(--muted); flex: none; }
         :global(.menu-item:hover) { background: var(--active); }
         :global(.menu-item:hover svg) { color: var(--text); }
+        .namebox { display: flex; gap: 6px; padding: 4px; }
+        .namebox input { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--border-2); background: var(--surface); color: var(--text); font: inherit; font-size: 13px; outline: none; }
+        .namebox input:focus { border-color: var(--signal); }
+        .namebox button { height: 28px; padding: 0 10px; border-radius: 4px; border: 0; background: var(--signal); color: #fff; font: inherit; font-size: 13px; cursor: pointer; }
+        .namebox button:disabled { opacity: .4; cursor: not-allowed; }
       `}</style>
     </div>
   );

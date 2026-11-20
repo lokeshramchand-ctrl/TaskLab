@@ -54,6 +54,11 @@ jobs:
           npm run dist -- --publish never "-c.extraMetadata.version=$VERSION"
         working-directory: desktop
 
+      # The packaged app (not the dev build) must start and load its server before anything is released.
+      - name: Smoke-test the packaged app
+        shell: bash
+        run: LOMU_EXE="$PWD/desktop/dist/win-unpacked/LoMu.exe" node desktop/tests/smoke.mjs
+
       - name: Publish the release
         shell: bash
         env:

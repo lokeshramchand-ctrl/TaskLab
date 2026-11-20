@@ -178,11 +178,12 @@ test('song menu: every entry works, and queue actions follow the steered device'
   await expect(page.getByRole('menu').getByText('Remove from liked')).toBeVisible();
   await page.getByRole('menu').getByText('Remove from liked').click();
 
-  // Add to playlist -> New playlist (name asked with a prompt).
+  // Add to playlist -> New playlist (the name is typed into a field in the menu; window.prompt() does not exist in the desktop app).
   await open();
   await page.getByRole('menu').getByText('Add to playlist').click();
-  page.once('dialog', (d) => d.accept('Menu Test'));
   await page.getByRole('menu').getByText('New playlist').click();
+  await page.getByLabel('Playlist name').fill('Menu Test');
+  await page.keyboard.press('Enter');
   await expect(page.getByText('Added to Menu Test')).toBeVisible();
 
   // Go to album / artist navigate.

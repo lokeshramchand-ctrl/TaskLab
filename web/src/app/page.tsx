@@ -19,7 +19,9 @@ import { warm, warmProps } from '@/lib/warm';
 const dateLine = () => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
 export default function Home() {
-  const user = useAuth((s) => s.user);
+  const account = useAuth((s) => s.user);
+  const isLocal = useAuth((s) => s.local);
+  const user = isLocal ? null : account; // the desktop app's built-in account is called "local"; do not greet by it
   const home = useSettings((s) => s.home);
   const history = useLibrary((s) => s.history);
   const liked = useLibrary((s) => s.liked);
