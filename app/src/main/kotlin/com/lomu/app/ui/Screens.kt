@@ -264,22 +264,22 @@ fun SearchScreen() {
                                 }
                             }
                         }
-                        SectionTitle("Browse Categories", chevron = false)
-                        Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TRY_SEARCHES.withIndex().chunked(2).forEach { pair ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    pair.forEach { (i, label) -> CategoryTile(label, TILE_COLORS[i % TILE_COLORS.size], Modifier.weight(1f)) { submit(label) } }
-                                    if (pair.size == 1) Spacer(Modifier.weight(1f))
-                                }
-                            }
-                        }
                     }
                 }
             } else when (val r = result) {
                 is Load.Loading -> item { Loading() }
                 is Load.Err -> item { ErrorBox(r.message) }
                 is Load.Ok -> {
-                    val sums = r.value?.summaries.orEmpty()
+                    val sums = r.value?.summaries.orEmpty().let { all ->
+                        // The top result should be a song: if the card is an artist/album, lead with the best song match.
+                        val top = all.firstOrNull()
+                        if (top == null || top.items.firstOrNull() is SongItem) all else {
+                            val song = top.items.firstOrNull { it is SongItem }
+                                ?: all.drop(1).firstNotNullOfOrNull { s -> s.items.firstOrNull { it is SongItem && !it.isVideoSong } }
+                            if (song == null) all
+                            else listOf(top.copy(items = listOf(song) + top.items.filter { it.id != song.id })) + all.drop(1)
+                        }
+                    }
                     if (sums.isEmpty()) item { EmptyState(Ph.Search, "No Results for “$submitted”", "Check the spelling or try a new search.") }
                     val shown = if (filter == 0) sums.map { it to 5 } else listOfNotNull(sums.getOrNull(filter - 1)?.let { it to 50 })
                     shown.forEach { (sum, limit) ->
