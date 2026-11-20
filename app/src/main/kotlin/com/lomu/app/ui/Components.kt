@@ -164,6 +164,25 @@ fun rememberTint(url: String?): Color? {
     return tint
 }
 
+/** Up to three distinct swatches of an artwork (vibrant first), for multi-colour washes. Empty until the image has been read. */
+@Composable
+fun rememberPalette(url: String?): List<Color> {
+    val ctx = LocalContext.current
+    val colors by produceState<List<Color>>(emptyList(), url) {
+        if (url == null) { value = emptyList(); return@produceState }
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                val req = ImageRequest.Builder(ctx).data(url).size(96).allowHardware(false).build()
+                val bmp = SingletonImageLoader.get(ctx).execute(req).image?.toBitmap() ?: return@runCatching emptyList()
+                val p = Palette.from(bmp).maximumColorCount(24).generate()
+                listOfNotNull(p.vibrantSwatch, p.lightVibrantSwatch, p.darkVibrantSwatch, p.mutedSwatch, p.dominantSwatch)
+                    .map { it.rgb }.distinct().take(3).map { Color(it) }
+            }.getOrDefault(emptyList())
+        }
+    }
+    return colors
+}
+
 /** 0.5dp separator, inset from the left so it starts under the text, as in Apple Music lists. */
 @Composable
 fun Hairline(inset: Dp = 0.dp, modifier: Modifier = Modifier) {
