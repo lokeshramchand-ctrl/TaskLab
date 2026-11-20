@@ -62,6 +62,19 @@ class SyncClient @Inject constructor(
 
     val signedIn get() = prefs.getString("refresh", null) != null
 
+    /** A queue another device (web, desktop) was playing more recently than this phone; Home offers to continue it. */
+    data class RemoteQueue(val device: String, val tracks: List<MediaMetadata>, val index: Int, val positionMs: Long, val at: Long)
+
+    private val _remoteQueue = MutableStateFlow<RemoteQueue?>(null)
+    val remoteQueue: StateFlow<RemoteQueue?> = _remoteQueue.asStateFlow()
+
+    init {
+        runCatching { prefs.getString("remoteQueue", null)?.let { _remoteQueue.value = parseRemoteQueue(JSONObject(it)) } }
+    }
+
+    private fun deviceId(): String =
+        prefs.getString("deviceId", null) ?: java.util.UUID.randomUUID().toString().replace("-", "").take(16).also { prefs.edit().putString("deviceId", it).apply() }
+
     private fun base() = (prefs.getString("url", null) ?: com.lomu.app.BuildConfig.DEFAULT_SERVER_URL).trimEnd('/')
 
     private fun post(path: String, body: JSONObject, auth: Boolean): Pair<Int, JSONObject> {
@@ -165,7 +178,8 @@ class SyncClient @Inject constructor(
     }
 
     fun signOut() {
-        prefs.edit().remove("access").remove("refresh").remove("user").remove("seq").remove("liked").remove("lastEvent").remove("plSnap").apply()
+        prefs.edit().remove("access").remove("refresh").remove("user").remove("seq").remove("liked").remove("lastEvent").remove("plSnap").remove("savedSnap").remove("queueJson").remove("queueAt").remove("queuePushedAt").remove("queueSeenAt").remove("queueSig").remove("remoteQueue").apply()
+        _remoteQueue.value = null
         _state.value = _state.value.copy(user = null, status = "Not signed in", error = null)
     }
 
@@ -192,6 +206,7 @@ class SyncClient @Inject constructor(
             val docs = o.getJSONArray("docs")
             if (docs.length() == 0) return
             for (i in 0 until docs.length()) apply(docs.getJSONObject(i))
+            savedIdsCache = null
             prefs.edit().putLong("seq", o.getLong("seq")).apply()
             if (docs.length() < 2000) return
         }
@@ -211,6 +226,8 @@ class SyncClient @Inject constructor(
                 }
             }
             "playlist" -> applyPlaylist(d)
+            "saved" -> applySaved(d)
+            "queue" -> applyQueue(d)
             "play" -> {
                 if (d.optBoolean("deleted")) return
                 val v = d.optJSONObject("value") ?: return
@@ -280,6 +297,149 @@ class SyncClient @Inject constructor(
         prefs.edit().putString("plSnap", snap.toString()).apply()
     }
 
+    // ---- Saved albums, artists and YouTube playlists (the web's "Save" button). The phone's database
+    // stays the source of truth: a save or un-save made here while the server is away is pushed on the next
+    // successful sync, and `savedSnap` remembers what the server last agreed on (id -> kind).
+
+    private class SavedNow(val kind: String, val item: JSONObject, val at: Long)
+
+    private var savedIdsCache: MutableSet<String>? = null
+
+    private fun savedSnapshot() = runCatching { JSONObject(prefs.getString("savedSnap", null) ?: "{}") }.getOrDefault(JSONObject())
+
+    private suspend fun savedNow(): Map<String, SavedNow> {
+        val zone = ZoneId.systemDefault()
+        fun ms(t: LocalDateTime?) = t?.atZone(zone)?.toInstant()?.toEpochMilli() ?: System.currentTimeMillis()
+        val out = LinkedHashMap<String, SavedNow>()
+        database.albumsLikedByCreateDateAsc().first().filter { !it.album.isLocal }.forEach { a ->
+            val e = a.album
+            val artists = JSONArray()
+            a.artists.forEach { ar -> artists.put(JSONObject().apply { if (ar.isYouTubeArtist) put("id", ar.id); put("name", ar.name) }) }
+            val item = JSONObject().put("kind", "album").put("id", e.id).put("title", e.title).put("artists", artists)
+            e.year?.let { item.put("year", it.toString()) }
+            e.thumbnailUrl?.let { item.put("thumb", it) }
+            out[e.id] = SavedNow("album", item, ms(e.bookmarkedAt))
+        }
+        database.artistsBookmarkedByCreateDateAsc().first().filter { it.artist.isYouTubeArtist && !it.artist.isLocal }.forEach { a ->
+            val e = a.artist
+            val item = JSONObject().put("kind", "artist").put("id", e.id).put("title", e.name)
+            e.thumbnailUrl?.let { item.put("thumb", it) }
+            out[e.id] = SavedNow("artist", item, ms(e.bookmarkedAt))
+        }
+        database.playlists(com.lomu.app.constants.PlaylistSortType.CREATE_DATE, true).first()
+            .filter { !it.playlist.isLocal && it.playlist.bookmarkedAt != null && it.playlist.browseId != null }.forEach { p ->
+                val e = p.playlist
+                val id = e.browseId!!.removePrefix("VL")
+                val item = JSONObject().put("kind", "playlist").put("id", id).put("title", e.name)
+                e.thumbnailUrl?.let { item.put("thumb", it) }
+                out[id] = SavedNow("playlist", item, ms(e.bookmarkedAt))
+            }
+        return out
+    }
+
+    private suspend fun applySaved(d: JSONObject) {
+        val id = d.getString("key")
+        val snap = savedSnapshot()
+        val ids = savedIdsCache ?: savedNow().keys.toMutableSet().also { savedIdsCache = it }
+        // Saved or removed on this phone since the last sync: keep ours, the push below sends it.
+        if ((id in ids) != snap.has(id)) return
+        if (d.optBoolean("deleted")) {
+            database.withTransaction {
+                album(id).first()?.album?.let { if (it.bookmarkedAt != null) update(it.copy(bookmarkedAt = null)) }
+                artist(id).first()?.artist?.let { if (it.bookmarkedAt != null) update(it.copy(bookmarkedAt = null)) }
+                playlist(id).first()?.playlist?.let { if (!it.isLocal && it.bookmarkedAt != null) update(it.copy(bookmarkedAt = null)) }
+            }
+            ids.remove(id)
+            prefs.edit().putString("savedSnap", snap.apply { remove(id) }.toString()).apply()
+            return
+        }
+        val v = d.optJSONObject("value") ?: return
+        val item = v.optJSONObject("item") ?: return
+        val kind = item.optString("kind")
+        val title = item.optString("title").ifBlank { return }
+        val thumb = item.optString("thumb").ifBlank { null }
+        val at = LocalDateTime.ofInstant(Instant.ofEpochMilli(v.optLong("at", d.optLong("updated"))), ZoneId.systemDefault())
+        database.withTransaction {
+            when (kind) {
+                "album" -> {
+                    val e = album(id).first()?.album
+                    if (e == null) {
+                        insert(com.lomu.app.db.entities.AlbumEntity(id = id, title = title, year = item.optString("year").toIntOrNull(), thumbnailUrl = thumb, songCount = 0, duration = 0, bookmarkedAt = at))
+                        val artists = item.optJSONArray("artists") ?: JSONArray()
+                        var order = 0
+                        for (i in 0 until artists.length()) {
+                            val a = artists.getJSONObject(i)
+                            val aid = a.optString("id").ifBlank { null } ?: continue
+                            insert(com.lomu.app.db.entities.ArtistEntity(id = aid, name = a.optString("name")))
+                            insert(com.lomu.app.db.entities.AlbumArtistMap(albumId = id, artistId = aid, order = order++))
+                        }
+                    } else if (e.bookmarkedAt == null) update(e.copy(bookmarkedAt = at))
+                }
+                "artist" -> {
+                    val e = artist(id).first()?.artist
+                    if (e == null) insert(com.lomu.app.db.entities.ArtistEntity(id = id, name = title, thumbnailUrl = thumb, bookmarkedAt = at))
+                    else if (e.bookmarkedAt == null) update(e.copy(bookmarkedAt = at))
+                }
+                "playlist" -> {
+                    val e = playlist(id).first()?.playlist
+                    if (e == null) insert(com.lomu.app.db.entities.PlaylistEntity(id = id, name = title, browseId = id, isEditable = false, isLocal = false, thumbnailUrl = thumb, bookmarkedAt = at))
+                    else if (!e.isLocal && e.bookmarkedAt == null) update(e.copy(bookmarkedAt = at))
+                }
+            }
+        }
+        if (kind == "album" || kind == "artist" || kind == "playlist") {
+            ids.add(id)
+            prefs.edit().putString("savedSnap", snap.put(id, kind).toString()).apply()
+        }
+    }
+
+    // ---- Queue: one document ("current") holding what the most recent device was playing, so any other
+    // device can offer "continue where you left off". It is never applied automatically (that would cut
+    // off whatever is playing); Home shows it and the user taps to take it over.
+
+    /** Called by the player service whenever it saves its queue. Cheap; the next sync uploads it. */
+    fun noteQueue(items: List<MediaMetadata>, index: Int, positionMs: Long, playing: Boolean) {
+        if (!signedIn || items.isEmpty()) return
+        val sig = index.toString() + ":" + items.joinToString(",") { it.id }
+        // A restored queue at app start has the same content as last time: do not call it fresh activity.
+        if (sig == prefs.getString("queueSig", null) && !playing) return
+        val from = if (items.size <= 100) 0 else (index - 10).coerceIn(0, items.size - 100)
+        val tracks = JSONArray().also { a -> items.subList(from, minOf(items.size, from + 100)).forEach { a.put(metadataToTrack(it)) } }
+        val at = System.currentTimeMillis()
+        val v = JSONObject().put("tracks", tracks).put("index", index - from).put("positionMs", positionMs)
+            .put("at", at).put("dev", deviceId()).put("device", "android")
+        prefs.edit().putString("queueJson", v.toString()).putLong("queueAt", at).putString("queueSig", sig).apply()
+    }
+
+    private fun parseRemoteQueue(v: JSONObject): RemoteQueue? {
+        val arr = v.optJSONArray("tracks") ?: return null
+        val tracks = (0 until arr.length()).mapNotNull { trackToMetadata(arr.getJSONObject(it)) }
+        if (tracks.isEmpty()) return null
+        return RemoteQueue(v.optString("device", "another device"), tracks, v.optInt("index", 0).coerceIn(0, tracks.size - 1), v.optLong("positionMs"), v.optLong("at"))
+    }
+
+    private fun applyQueue(d: JSONObject) {
+        if (d.getString("key") != "current") return
+        if (d.optBoolean("deleted")) {
+            prefs.edit().remove("remoteQueue").apply()
+            _remoteQueue.value = null
+            return
+        }
+        val v = d.optJSONObject("value") ?: return
+        if (v.optString("dev") == deviceId()) return
+        val at = v.optLong("at")
+        if (at <= maxOf(prefs.getLong("queueAt", 0), prefs.getLong("queueSeenAt", 0))) return // ours, or already handled, is newer
+        prefs.edit().putString("remoteQueue", v.toString()).apply()
+        _remoteQueue.value = parseRemoteQueue(v)
+    }
+
+    /** The user took the other device's queue over (or dismissed it): stop offering it. */
+    fun dismissRemoteQueue() {
+        val at = _remoteQueue.value?.at ?: return
+        prefs.edit().remove("remoteQueue").putLong("queueSeenAt", at).apply()
+        _remoteQueue.value = null
+    }
+
     private suspend fun push() {
         val docs = JSONArray()
         val now = System.currentTimeMillis()
@@ -320,11 +480,27 @@ class SyncClient @Inject constructor(
             }
         }
         plSnap.keys().forEach { id -> if (id !in plNow) docs.put(doc("playlist", id, null, now, true)) }
+
+        // Saved albums / artists / playlists: diff against what the server last heard from us.
+        val savedSnap = savedSnapshot()
+        val savedCur = savedNow()
+        savedCur.forEach { (id, sv) ->
+            if (!savedSnap.has(id)) docs.put(doc("saved", id, JSONObject().put("item", sv.item).put("at", sv.at), sv.at, false))
+        }
+        savedSnap.keys().forEach { id -> if (id !in savedCur) docs.put(doc("saved", id, null, now, true)) }
+        val savedSigs = JSONObject().also { o -> savedCur.forEach { (id, sv) -> o.put(id, sv.kind) } }
+
+        // The queue this phone is playing (see noteQueue).
+        val queueAt = prefs.getLong("queueAt", 0)
+        val queueJson = prefs.getString("queueJson", null)
+        val queueDue = queueJson != null && queueAt > prefs.getLong("queuePushedAt", 0)
+        if (queueDue) docs.put(doc("queue", "current", JSONObject(queueJson!!), queueAt, false))
         if (docs.length() == 0) return
 
         val (code, o) = call { post("/api/sync", JSONObject().put("docs", docs), auth = true) }
         if (code != 200) error("push failed ($code)")
-        prefs.edit().putString("plSnap", plSigs.toString()).apply()
+        prefs.edit().putString("plSnap", plSigs.toString()).putString("savedSnap", savedSigs.toString())
+            .apply { if (queueDue) putLong("queuePushedAt", queueAt) }.apply()
         // Our own writes are the next seq numbers; skip them so they are not pulled back.
         val seq = prefs.getLong("seq", 0)
         val edit = prefs.edit().putStringSet("liked", likedIds).putLong("lastEvent", events.lastOrNull()?.event?.id ?: lastEvent)

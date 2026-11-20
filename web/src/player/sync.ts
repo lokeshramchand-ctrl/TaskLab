@@ -1,6 +1,7 @@
 'use client';
 import { create } from 'zustand';
 import { useLibrary, type Play, type UserPlaylist } from './library';
+import { noteQueueRows, startQueueSync } from './queue-sync';
 import type { AlbumCard, ArtistCard, PlaylistCard, Track } from '@/lib/types';
 
 /* Account + sync client. The library store stays the source of truth in the browser; this module
@@ -112,6 +113,7 @@ export type Snapshot = { likes: Map<string, number>; playlists: Map<string, numb
 
 export function applyRows(rows: Row[]) {
   if (!rows.length) return;
+  noteQueueRows(rows); // the 'queue' document is offered as "Continue listening", never applied
   useLibrary.setState((s) => {
     const liked = { ...s.liked };
     const albums = { ...s.albums };
@@ -151,6 +153,7 @@ let started = false;
 let applying = false;
 let snap: Snapshot | null = null;
 let unsub: (() => void) | null = null;
+let stopQueue: (() => void) | null = null;
 let events: EventSource | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pulling: Promise<void> | null = null;
@@ -221,6 +224,12 @@ export async function startSync() {
   snap = null;
   await pushPending().catch(() => {});
   unsub = useLibrary.subscribe(schedulePush);
+  stopQueue = startQueueSync(async (doc) => {
+    const r = await api('/api/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ docs: [doc] }) });
+    if (!r.ok) throw new Error(String(r.status));
+    const { seq } = (await r.json()) as { seq: number };
+    if (seq - getSeq() === 1) localStorage.setItem(SEQ_KEY, String(seq)); // our own write: no need to pull it back
+  });
   const open = () => {
     events = new EventSource('/api/sync/events');
     events.addEventListener('seq', (e) => {
@@ -237,6 +246,8 @@ export async function startSync() {
 export function stopSync() {
   started = false;
   unsub?.();
+  stopQueue?.();
+  stopQueue = null;
   events?.close();
   if (timer) clearTimeout(timer);
 }

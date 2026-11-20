@@ -30,3 +30,23 @@ describe('client diff', () => {
     expect(r.docs.map((d) => d.kind).sort()).toEqual(['play', 'playlist']);
   });
 });
+
+describe('documents written by the Android client', () => {
+  it('applies saved albums, artists and playlists in the phone\'s shape', async () => {
+    const { applyRows } = await import('@/player/sync');
+    const { useLibrary } = await import('@/player/library');
+    useLibrary.setState({ albums: {}, artists: {}, savedPlaylists: {} });
+    const doc = (key: string, item: Record<string, unknown>) => ({ kind: 'saved', key, value: { item, at: 7 }, updated: 7, deleted: false, seq: 1 });
+    applyRows([
+      doc('MPREb_1', { kind: 'album', id: 'MPREb_1', title: 'Al', artists: [{ id: 'UC1', name: 'Ar' }], year: '2020', thumb: 'x' }),
+      doc('UC1', { kind: 'artist', id: 'UC1', title: 'Ar' }),
+      doc('PL1', { kind: 'playlist', id: 'PL1', title: 'Pl' }),
+    ]);
+    const s = useLibrary.getState();
+    expect(Object.keys(s.albums)).toEqual(['MPREb_1']);
+    expect(Object.keys(s.artists)).toEqual(['UC1']);
+    expect(Object.keys(s.savedPlaylists)).toEqual(['PL1']);
+    applyRows([{ kind: 'saved', key: 'UC1', value: null, updated: 9, deleted: true, seq: 2 }]);
+    expect(useLibrary.getState().artists).toEqual({});
+  });
+});

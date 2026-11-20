@@ -209,6 +209,44 @@ private fun MenuRow(icon: Ph, label: String, tint: Color? = null, sub: String? =
     }
 }
 
+/** Save / un-save an album as a bookmark (the web's "Save"): shows up in Library > Albums and syncs to the other devices. */
+suspend fun setAlbumSaved(db: com.lomu.app.db.MusicDatabase, page: com.music.innertube.pages.AlbumPage, saved: Boolean, sync: com.lomu.app.sync.SyncClient?) {
+    withContext(Dispatchers.IO) {
+        db.withTransaction {
+            insert(page) // adds the album row and its songs when missing
+            album(page.album.browseId).first()?.album?.let { update(it.copy(bookmarkedAt = if (saved) LocalDateTime.now() else null)) }
+        }
+    }
+    runCatching { sync?.sync() }
+}
+
+suspend fun setArtistSaved(db: com.lomu.app.db.MusicDatabase, page: com.music.innertube.pages.ArtistPage, saved: Boolean, sync: com.lomu.app.sync.SyncClient?) {
+    withContext(Dispatchers.IO) {
+        db.withTransaction {
+            val a = page.artist
+            val at = if (saved) LocalDateTime.now() else null
+            val e = artist(a.id).first()?.artist
+            if (e == null) insert(com.lomu.app.db.entities.ArtistEntity(id = a.id, name = a.title, thumbnailUrl = a.thumbnail, channelId = a.channelId, bookmarkedAt = at))
+            else update(e.copy(bookmarkedAt = at))
+        }
+    }
+    runCatching { sync?.sync() }
+}
+
+/** A YouTube playlist kept as a link (not copied): it is opened from YouTube each time. */
+suspend fun setPlaylistSaved(db: com.lomu.app.db.MusicDatabase, rawId: String, name: String, thumb: String?, saved: Boolean, sync: com.lomu.app.sync.SyncClient?) {
+    val id = rawId.removePrefix("VL")
+    withContext(Dispatchers.IO) {
+        db.withTransaction {
+            val at = if (saved) LocalDateTime.now() else null
+            val e = playlist(id).first()?.playlist
+            if (e == null) insert(PlaylistEntity(id = id, name = name, browseId = id, isEditable = false, isLocal = false, thumbnailUrl = thumb, bookmarkedAt = at))
+            else if (!e.isLocal) update(e.copy(bookmarkedAt = at))
+        }
+    }
+    runCatching { sync?.sync() }
+}
+
 /** "Add to Library" for an album or playlist: keeps its songs as a playlist of your own. */
 suspend fun saveAsPlaylist(db: com.lomu.app.db.MusicDatabase, name: String, songs: List<MediaMetadata>) = withContext(Dispatchers.IO) {
     db.withTransaction {

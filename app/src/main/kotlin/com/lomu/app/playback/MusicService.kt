@@ -3319,6 +3319,7 @@ class MusicService :
         val volume = player.volume
         val playbackState = player.playbackState
         val automixItems = automixItems.value.mapNotNull { it.metadata }
+        runCatching { syncClient.noteQueue(items, mediaItemIndex, position, player.isPlaying) } // offered to the other devices at the next sync
         persistenceScope.launch {
             persistQueueToDisk(
                 queue = queue,

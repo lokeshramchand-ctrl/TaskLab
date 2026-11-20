@@ -18,6 +18,8 @@ sealed interface Screen {
     data object Import : Screen
     data object Liked : Screen
     data object Playlists : Screen
+    data object Albums : Screen
+    data object Artists : Screen
 }
 
 /** Tiny back stack: the bottom entry is the current tab, the rest are pushed detail pages. */

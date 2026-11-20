@@ -53,6 +53,7 @@ import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import androidx.room.withTransaction
 import com.lomu.app.models.toMediaMetadata
 import kotlinx.coroutines.launch
@@ -124,6 +125,9 @@ fun HomeScreen() {
     val sync = LocalSync.current
     val fallback = remember { kotlinx.coroutines.flow.MutableStateFlow(com.lomu.app.sync.SyncState()) }
     val syncState by (sync?.state ?: fallback).collectAsState()
+    val noQueue = remember { kotlinx.coroutines.flow.MutableStateFlow<com.lomu.app.sync.SyncClient.RemoteQueue?>(null) }
+    val remoteQueue by (sync?.remoteQueue ?: noQueue).collectAsState()
+    val lo = LocalLo.current
     // Start from the cached shelves so Home doesn't flash the open feed ("India's Biggest Hits")
     // before the personal "Top Picks" finish building a few seconds later.
     var recsLoaded by remember { mutableStateOf(sync == null) }
@@ -136,6 +140,28 @@ fun HomeScreen() {
     val state by load("home") { YouTube.home() }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
         item { TitleBar("Home") }
+        val resume = remoteQueue
+        if (resume != null) item {
+            val first = resume.tracks[resume.index]
+            val ctx = LocalContext.current
+            Column {
+                CaptionedTitle("Continue listening", "From ${resume.device}")
+                Box(Modifier.padding(horizontal = 20.dp)) {
+                    MediaRow(first.title, first.artists.joinToString { it.name }, first.thumbnailUrl, separator = false, pad = 0.dp) {
+                        player?.let { pc ->
+                            pc.playQueue(com.lomu.app.playback.queues.ListQueue(title = "Continue", items = resume.tracks.map { it.toMediaItem() }, startIndex = resume.index))
+                            val at = resume.positionMs
+                            sync?.dismissRemoteQueue()
+                            if (at > 2_000) pc.player.let { p ->
+                                // The queue is handed to the player service asynchronously: seek once it has the song.
+                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ if (p.currentMediaItem?.mediaId == first.id) p.seekTo(at) }, 800)
+                            }
+                        } ?: android.widget.Toast.makeText(ctx, "Player is starting", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                Text("Dismiss", style = LoType.small, color = lo.grey, modifier = Modifier.padding(start = 20.dp, bottom = 8.dp).pressable { sync?.dismissRemoteQueue() })
+            }
+        }
         val top = recs.firstOrNull()
         if (top != null) item {
             Column {
@@ -388,6 +414,8 @@ fun LibraryScreen() {
             Spacer(Modifier.height(6.dp))
             Hairline(20.dp)
             LibraryRow(Ph.Playlist, "Playlists") { nav.push(Screen.Playlists) }
+            LibraryRow(Ph.Disc, "Albums") { nav.push(Screen.Albums) }
+            LibraryRow(Ph.User, "Artists") { nav.push(Screen.Artists) }
             LibraryRow(Ph.Heart, "Liked Songs") { nav.push(Screen.Liked) }
             LibraryRow(Ph.Download, "Import from YouTube Music") { nav.push(Screen.Import) }
         }
@@ -443,7 +471,41 @@ fun PlaylistsScreen() {
         item { BackTitle("Library", "Playlists", nav::pop) }
         if (playlists.isEmpty()) item { EmptyState(Ph.Playlist, "No Playlists", "Playlists you import or create show up here.") }
         items(playlists) { p ->
-            MediaRow(p.playlist.name, "${p.songCount} songs", p.playlist.thumbnailUrl ?: p.thumbnails.firstOrNull()) { nav.push(Screen.LocalPlaylist(p.playlist.id)) }
+            MediaRow(p.playlist.name, if (p.playlist.isLocal) "${p.songCount} songs" else "Saved playlist", p.playlist.thumbnailUrl ?: p.thumbnails.firstOrNull()) {
+                if (p.playlist.isLocal) nav.push(Screen.LocalPlaylist(p.playlist.id)) else nav.push(Screen.Playlist(p.playlist.browseId ?: p.playlist.id))
+            }
+        }
+    }
+}
+
+@Composable
+fun SavedAlbumsScreen() {
+    val nav = LocalNav.current
+    val player = LocalPlayer.current
+    val flow = remember(player) { player?.database?.albumsLikedByCreateDateAsc() ?: flowOf(emptyList()) }
+    val albums by flow.collectAsState(emptyList())
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
+        item { BackTitle("Library", "Albums", nav::pop) }
+        val shown = albums.filter { !it.album.isLocal }
+        if (shown.isEmpty()) item { EmptyState(Ph.Disc, "No Albums", "Tap + on an album to keep it here.") }
+        items(shown) { a ->
+            MediaRow(a.album.title, a.artists.joinToString { it.name }, a.album.thumbnailUrl) { nav.push(Screen.Album(a.album.id)) }
+        }
+    }
+}
+
+@Composable
+fun SavedArtistsScreen() {
+    val nav = LocalNav.current
+    val player = LocalPlayer.current
+    val flow = remember(player) { player?.database?.artistsBookmarkedByCreateDateAsc() ?: flowOf(emptyList()) }
+    val artists by flow.collectAsState(emptyList())
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
+        item { BackTitle("Library", "Artists", nav::pop) }
+        val shown = artists.filter { it.artist.isYouTubeArtist && !it.artist.isLocal }
+        if (shown.isEmpty()) item { EmptyState(Ph.User, "No Artists", "Tap + on an artist to keep them here.") }
+        items(shown) { a ->
+            MediaRow(a.artist.name, "Artist", a.artist.thumbnailUrl) { nav.push(Screen.Artist(a.artist.id)) }
         }
     }
 }
@@ -511,10 +573,10 @@ private fun GlassRound(icon: ImageVector, label: String, onClick: () -> Unit) {
  * or start radio), the row under the cover on album, playlist and artist pages.
  */
 @Composable
-private fun RowScope.PlayShuffle(play: () -> Unit, shuffle: () -> Unit, extraIcon: ImageVector? = null, extraLabel: String = "", extra: (() -> Unit)? = null) {
+private fun RowScope.PlayShuffle(play: () -> Unit, shuffle: () -> Unit, vararg extras: Triple<ImageVector, String, () -> Unit>) {
     GlassRound(Ph.Shuffle.vector, "Shuffle", shuffle)
     Row(
-        Modifier.width(176.dp).height(46.dp).shadow(10.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.2f), spotColor = Color.Black.copy(alpha = 0.2f))
+        Modifier.width(if (extras.size > 1) 130.dp else 176.dp).height(46.dp).shadow(10.dp, CircleShape, clip = false, ambientColor = Color.Black.copy(alpha = 0.2f), spotColor = Color.Black.copy(alpha = 0.2f))
             .background(Color.White.copy(alpha = 0.95f), CircleShape).pressable(CircleShape, onClick = play),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -522,7 +584,7 @@ private fun RowScope.PlayShuffle(play: () -> Unit, shuffle: () -> Unit, extraIco
         Spacer(Modifier.width(8.dp))
         Text("Play", style = LoType.body.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp), color = Color(0xFF111111))
     }
-    if (extraIcon != null && extra != null) GlassRound(extraIcon, extraLabel, extra)
+    extras.forEach { (icon, label, go) -> GlassRound(icon, label, go) }
 }
 
 @Composable
@@ -536,16 +598,22 @@ fun AlbumScreen(id: String) {
             val page = st.value
             val scope = rememberCoroutineScope()
             val ctx = LocalContext.current
+            val sync = LocalSync.current
+            val db = player?.database
+            val saved by remember(db, id) { (db?.album(id) ?: flowOf<com.lomu.app.db.entities.Album?>(null)).map { it?.album?.bookmarkedAt != null } }.collectAsState(false)
             Detail(
                 page.album.thumbnail, page.album.title, page.album.artists?.joinToString(", ") { it.name },
                 listOfNotNull("Album", page.album.year?.toString(), "${page.songs.size} songs").joinToString(" · "),
                 actions = {
                     PlayShuffle(
                         { player?.playList(page.album.title, page.songs) }, { player?.playList(page.album.title, page.songs.shuffled()) },
-                        Ph.Plus.vector, "Add to Library",
-                    ) {
-                        player?.database?.let { d -> scope.launch { saveAsPlaylist(d, page.album.title, page.songs.map { it.toMediaMetadata() }); android.widget.Toast.makeText(ctx, "Added to Library", android.widget.Toast.LENGTH_SHORT).show() } }
-                    }
+                        Triple(if (saved) Ph.Check.vector else Ph.Plus.vector, "Save", {
+                            db?.let { d -> scope.launch { setAlbumSaved(d, page, !saved, sync); android.widget.Toast.makeText(ctx, if (saved) "Removed from Library" else "Saved to Library", android.widget.Toast.LENGTH_SHORT).show() } }; Unit
+                        }),
+                        Triple(Ph.AddList.vector, "Copy to a playlist", {
+                            db?.let { d -> scope.launch { saveAsPlaylist(d, page.album.title, page.songs.map { it.toMediaMetadata() }); android.widget.Toast.makeText(ctx, "Copied to Playlists", android.widget.Toast.LENGTH_SHORT).show() } }; Unit
+                        }),
+                    )
                 },
             ) {
                 itemsIndexed(page.songs) { i, s -> TrackRow(s, flat = true, modifier = Modifier.appear(i)) { player?.playList(page.album.title, page.songs, i) } }
@@ -565,15 +633,22 @@ fun PlaylistScreen(id: String) {
             val page = st.value
             val scope = rememberCoroutineScope()
             val ctx = LocalContext.current
+            val sync = LocalSync.current
+            val db = player?.database
+            val pid = id.removePrefix("VL")
+            val saved by remember(db, pid) { (db?.playlist(pid) ?: flowOf<com.lomu.app.db.entities.Playlist?>(null)).map { it?.playlist?.let { p -> !p.isLocal && p.bookmarkedAt != null } == true } }.collectAsState(false)
             Detail(
                 page.playlist.thumbnail, page.playlist.title, page.playlist.author?.name, page.playlist.songCountText.orEmpty(),
                 actions = {
                     PlayShuffle(
                         { player?.playPlaylist(id, page.playlist.title, page.songs, page.songsContinuation) }, { player?.playList(page.playlist.title, page.songs.shuffled()) },
-                        Ph.Plus.vector, "Add to Library",
-                    ) {
-                        player?.database?.let { d -> scope.launch { saveAsPlaylist(d, page.playlist.title, page.songs.map { it.toMediaMetadata() }); android.widget.Toast.makeText(ctx, "Added to Library", android.widget.Toast.LENGTH_SHORT).show() } }
-                    }
+                        Triple(if (saved) Ph.Check.vector else Ph.Plus.vector, "Save", {
+                            db?.let { d -> scope.launch { setPlaylistSaved(d, pid, page.playlist.title, page.playlist.thumbnail, !saved, sync); android.widget.Toast.makeText(ctx, if (saved) "Removed from Library" else "Saved to Library", android.widget.Toast.LENGTH_SHORT).show() } }; Unit
+                        }),
+                        Triple(Ph.AddList.vector, "Copy to a playlist", {
+                            db?.let { d -> scope.launch { saveAsPlaylist(d, page.playlist.title, page.songs.map { it.toMediaMetadata() }); android.widget.Toast.makeText(ctx, "Copied to Playlists", android.widget.Toast.LENGTH_SHORT).show() } }; Unit
+                        }),
+                    )
                 },
             ) {
                 itemsIndexed(page.songs) { i, s -> TrackRow(s, flat = true, modifier = Modifier.appear(i)) { player?.playPlaylist(id, page.playlist.title, page.songs, page.songsContinuation, i) } }
@@ -594,13 +669,24 @@ fun ArtistScreen(id: String) {
         is Load.Ok -> {
             val page = st.value
             val firstSongs = page.sections.map { it.items.filterIsInstance<SongItem>() }.firstOrNull { it.isNotEmpty() }.orEmpty()
+            val scope = rememberCoroutineScope()
+            val ctx = LocalContext.current
+            val sync = LocalSync.current
+            val db = player?.database
+            val saved by remember(db, id) { (db?.artist(id) ?: flowOf<com.lomu.app.db.entities.Artist?>(null)).map { it?.artist?.bookmarkedAt != null } }.collectAsState(false)
+            val saveButton = Triple(if (saved) Ph.Check.vector else Ph.Plus.vector, "Save", {
+                db?.let { d -> scope.launch { setArtistSaved(d, page, !saved, sync); android.widget.Toast.makeText(ctx, if (saved) "Removed from Library" else "Saved to Library", android.widget.Toast.LENGTH_SHORT).show() } }; Unit
+            })
             Detail(
                 page.artist.thumbnail, page.artist.title, page.subscriberCountText, "", round = true,
-                actions = if (firstSongs.isEmpty()) null else ({
+                actions = if (firstSongs.isEmpty()) ({
+                    GlassRound(saveButton.first, saveButton.second, saveButton.third)
+                }) else ({
                     PlayShuffle(
                         { player?.playList(page.artist.title, firstSongs) }, { player?.playList(page.artist.title, firstSongs.shuffled()) },
-                        Ph.Radio.vector, "Start Radio",
-                    ) { player?.playRadio(firstSongs.first()) }
+                        Triple(Ph.Radio.vector, "Start Radio", { player?.playRadio(firstSongs.first()); Unit }),
+                        saveButton,
+                    )
                 }),
             ) {
                 items(page.sections) { sec ->

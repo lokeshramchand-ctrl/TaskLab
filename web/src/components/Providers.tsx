@@ -6,6 +6,7 @@ import { PlayerBar } from './PlayerBar';
 import { FullPlayer } from './FullPlayer';
 import { TrackMenuHost } from './Menu';
 import { ToastHost } from './Toast';
+import { ContinueBanner } from './ContinueBanner';
 import { AuthGate } from './AuthGate';
 import { ConnectHost } from './Devices';
 import { useSettings } from '@/player/settings';
@@ -32,6 +33,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <FullPlayer />
         <TrackMenuHost />
         <ToastHost />
+        <ContinueBanner />
       </AuthGate>
       <style jsx>{`
       `}</style>

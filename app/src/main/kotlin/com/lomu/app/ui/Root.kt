@@ -129,6 +129,8 @@ fun LoMuRoot(seenWelcome: Boolean, onWelcomeDone: () -> Unit) {
                     Screen.Import -> ImportScreen()
                     Screen.Liked -> LikedScreen()
                     Screen.Playlists -> PlaylistsScreen()
+                    Screen.Albums -> SavedAlbumsScreen()
+                    Screen.Artists -> SavedArtistsScreen()
                 }
                 }
             }
