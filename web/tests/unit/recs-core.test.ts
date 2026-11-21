@@ -71,3 +71,18 @@ describe('diversify', () => {
     expect(diversify(list, 2).map((t) => t.id)).toEqual(['1', '2', '4']);
   });
 });
+
+describe('dailyMix', () => {
+  const lib = Array.from({ length: 30 }, (_, i) => T('f' + i, 'Fav' + (i % 10)));
+  const fresh = Array.from({ length: 60 }, (_, i) => T('n' + i, 'New' + (i % 25)));
+  const aff = affinity(lib.map((t) => play(t, 2, 'done')), [], now);
+  it('is stable within a day, differs across days, has no repeats or back-to-back artists', async () => {
+    const { dailyMix } = await import('@/server/recs-core');
+    const a = dailyMix(aff, fresh, '2026-11-21', 40);
+    expect(a.map((t) => t.id)).toEqual(dailyMix(aff, fresh, '2026-11-21', 40).map((t) => t.id));
+    expect(a.map((t) => t.id)).not.toEqual(dailyMix(aff, fresh, '2026-11-22', 40).map((t) => t.id));
+    expect(new Set(a.map((t) => t.id)).size).toBe(a.length);
+    expect(a.length).toBeGreaterThanOrEqual(30);
+    for (let i = 1; i < a.length; i++) expect(a[i].artists[0].name).not.toBe(a[i - 1].artists[0].name);
+  });
+});

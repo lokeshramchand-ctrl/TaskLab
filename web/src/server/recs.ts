@@ -2,8 +2,8 @@ import 'server-only';
 import type { Shelf, Track } from '@/lib/types';
 import { all } from './sync';
 import { radio } from './catalog';
-import { cached, readStale } from './yt';
-import { affinity, diversify, rankCandidates, type PlayDoc, type LikeDoc } from './recs-core';
+import { cached, readStale, writeStale } from './yt';
+import { affinity, dailyMix, dailySeeds, dayKey, diversify, rankCandidates, type Affinity, type PlayDoc, type LikeDoc } from './recs-core';
 
 /* Server-side recommendations, shared by the web player and the phone. Signals come from the
    synced play log and likes; candidates come from YouTube's own radio for the strongest recent
@@ -11,6 +11,7 @@ import { affinity, diversify, rankCandidates, type PlayDoc, type LikeDoc } from 
 
 const SEEDS = 5;
 const PER_SEED = 30;
+const DAILY_SEEDS = 6;
 
 async function candidatesFor(seeds: Track[]): Promise<{ map: Map<string, Track[]>; ok: number }> {
   const map = new Map<string, Track[]>();
@@ -26,6 +27,27 @@ async function candidatesFor(seeds: Track[]): Promise<{ map: Map<string, Track[]
     }),
   );
   return { map, ok };
+}
+
+/**
+ * "Your Mix": built once per calendar day and then kept, so it is the same playlist all day (and on every device that
+ * asks the server). Today's seeds rotate through your top tracks, so each day explores a different corner of your taste.
+ * If YouTube cannot be reached, today's mix is not stored, and yesterday's stays on screen.
+ */
+async function dailyPlaylist(aff: Affinity, now: number, fallback: Track[]): Promise<Track[]> {
+  const day = dayKey(now);
+  const key = `recs:daily:${day}`;
+  const kept = readStale<Track[]>(key);
+  if (kept?.length) return kept;
+  const seeds = dailySeeds(aff.topTracks, day, DAILY_SEEDS);
+  const { map, ok } = await candidatesFor(seeds);
+  if (!ok && seeds.length) return readStale<Track[]>(`recs:daily:last`) ?? diversify(fallback, 2).slice(0, 30);
+  const mix = dailyMix(aff, rankCandidates(seeds, map, aff), day, 40);
+  if (mix.length >= 10) {
+    writeStale(key, mix);
+    writeStale('recs:daily:last', mix);
+  }
+  return mix;
 }
 
 export function buildMixes(): Promise<Shelf[]> {
@@ -44,8 +66,8 @@ export function buildMixes(): Promise<Shelf[]> {
     const ranked = rankCandidates(seeds, cands, aff);
 
     const shelves: Shelf[] = [];
-    const mix = diversify(ranked, 2).slice(0, 30);
-    if (mix.length) shelves.push({ title: 'Your Mix', subtitle: 'Made from what you play and like', items: mix });
+    const mix = await dailyPlaylist(aff, now, ranked);
+    if (mix.length) shelves.push({ title: 'Your Mix', subtitle: `Fresh every day · ${new Date(now).toLocaleDateString('en', { weekday: 'long' })}`, items: mix });
 
     if (aff.onRepeat.length) shelves.push({ title: 'On Repeat', subtitle: 'Your last 30 days', items: aff.onRepeat.slice(0, 15) });
 

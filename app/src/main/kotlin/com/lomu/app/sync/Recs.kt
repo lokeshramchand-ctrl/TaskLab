@@ -22,6 +22,7 @@ class Affinity(
     val heavilyPlayed: Set<String>,
     val skipped: Set<String>,
     val knownArtists: Set<String>,
+    val favorites: List<MediaMetadata>,
 )
 
 private const val DAY = 86_400_000L
@@ -56,7 +57,11 @@ fun affinity(plays: List<PlayDoc>, likes: List<LikeDoc>, now: Long): Affinity {
                 add(p.track, -1.2 * d)
                 if (age < 21 * DAY) recentSkips.merge(p.track.id, 1) { x, y -> x + y }
             }
-            else -> add(p.track, 0.3 * d)
+            else -> {
+                // Further into the song is a stronger "yes"; flat 0.3 when the length is unknown.
+                val dur = p.track.duration * 1000.0
+                add(p.track, (if (dur > 0) min(0.7, max(0.1, p.playedMs / dur * 0.8)) else 0.3) * d)
+            }
         }
     }
     for (l in likes) add(l.track, 2 * decay(now - l.at, 45.0))
@@ -74,11 +79,14 @@ fun affinity(plays: List<PlayDoc>, likes: List<LikeDoc>, now: Long): Affinity {
 
     val onRepeat = monthPlays.entries.sortedByDescending { it.value }.take(20).mapNotNull { byId[it.key] }
 
+    val favorites = ranked.take(80).mapNotNull { byId[it.key] }
+
     return Affinity(
         trackScore, artistScore, top, onRepeat,
         heavilyPlayed = completions.filter { it.value >= 3 }.keys.toSet(),
         skipped = recentSkips.filter { it.value >= 1 && it.key !in likedIds }.keys.toSet(),
         knownArtists = artistScore.filter { it.value > 0 }.keys.toSet(),
+        favorites = favorites,
     )
 }
 
@@ -116,6 +124,58 @@ fun diversify(list: List<MediaMetadata>, cap: Int): List<MediaMetadata> {
         if (a.isNotEmpty() && n >= cap) continue
         seen[a] = n + 1
         out.add(t)
+    }
+    return out
+}
+
+// ---- Daily mix (port of dailyMix in recs-core.ts): same three pools, same rhythm, deterministic per day.
+
+fun dayKey(now: Long): String = java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
+
+private fun rng(seed: String) = java.util.Random(seed.hashCode().toLong() * 2654435761L)
+
+/** Picks [n] of [list], favouring the front but never in the same order two days running. */
+private fun <T> pickWeighted(list: List<T>, n: Int, r: java.util.Random): List<T> =
+    list.mapIndexed { i, t -> t to r.nextDouble().pow(1.0 / (1 + 1.5 / (1 + i * 0.15))) }
+        .sortedByDescending { it.second }.take(n).map { it.first }
+
+fun dailySeeds(top: List<MediaMetadata>, day: String, n: Int = 6): List<MediaMetadata> =
+    if (top.size <= n) top else top.take(2) + pickWeighted(top.drop(2), n - 2, rng("seeds:$day"))
+
+fun dailyMix(aff: Affinity, ranked: List<MediaMetadata>, day: String, size: Int = 40): List<MediaMetadata> {
+    val r = rng("mix:$day")
+    val familiar = pickWeighted(aff.favorites.filter { it.id !in aff.skipped }, (size * 0.35).toInt(), r)
+    val fresh = ranked.filter { it.id !in aff.skipped }
+    val known = fresh.filter { t -> t.artists.any { it.name.lowercase() in aff.knownArtists } }
+    val unknown = fresh.filter { t -> t.artists.none { it.name.lowercase() in aff.knownArtists } }
+    val used = familiar.map { it.id }.toMutableSet()
+    fun take(src: List<MediaMetadata>, n: Int): List<MediaMetadata> {
+        val out = ArrayList<MediaMetadata>()
+        for (t in pickWeighted(src.filter { it.id !in used }, n * 2, r)) {
+            if (out.size >= n) break
+            used.add(t.id); out.add(t)
+        }
+        return out
+    }
+    val q = mapOf(
+        'F' to familiar.toMutableList(),
+        'K' to take(known, (size * 0.4).toInt()).toMutableList(),
+        'D' to take(unknown, (size * 0.25).toInt()).toMutableList(),
+        'S' to take(fresh, size).toMutableList(),
+    )
+    val rhythm = "FKFKD"
+    val total = q.values.sumOf { it.size }
+    val out = ArrayList<MediaMetadata>()
+    var i = 0
+    while (out.size < size && out.size < total && i < size * 4) {
+        for (k in listOf(rhythm[i % rhythm.length], 'F', 'K', 'D', 'S')) {
+            val list = q.getValue(k)
+            val idx = list.indexOfFirst { out.isEmpty() || lead(it) != lead(out.last()) }
+            if (idx < 0) continue
+            out.add(list.removeAt(idx))
+            break
+        }
+        i++
     }
     return out
 }
