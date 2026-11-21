@@ -62,6 +62,8 @@ function deviceId(): string {
 
 function deviceName(): string {
   const ua = navigator.userAgent;
+  // The Windows desktop app is Chromium inside, so it would read "Chrome on Windows": call it what it is.
+  if (/Electron\//.test(ua)) return 'Windows';
   const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
   const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : '';
   return `${browser}${os ? ` on ${os}` : ''}`;

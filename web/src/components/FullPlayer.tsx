@@ -39,9 +39,7 @@ export function FullPlayer() {
     <div className={`fp${expanded ? ' open' : ''}`} aria-hidden={!expanded} role="dialog" aria-label="Now playing">
       <div className="ambient" aria-hidden style={track.thumb ? { backgroundImage: `url(${track.thumb})` } : undefined} />
       <header className="top">
-        <button className="icon-btn bordered" aria-label="Close player" onClick={() => P.setExpanded(false)}>
-          <Icon name="down" />
-        </button>
+        <span className="icon-btn" aria-hidden style={{ visibility: 'hidden' }} />
         <div className="eyebrow">Now playing</div>
         <button className="icon-btn bordered" aria-label="More" onClick={(e) => useMenu.getState().open(track, e)}>
           <Icon name="more" />

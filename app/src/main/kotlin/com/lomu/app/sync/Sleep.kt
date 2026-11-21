@@ -106,3 +106,54 @@ fun formatSpan(ms: Long): String {
     val h = m / 60
     return if (m % 60 != 0L) "${h}h ${m % 60}m" else "${h}h"
 }
+
+// ---------------------------------------------------------------- manual trip nap
+// The user picks the song they were hearing when they dozed off and the one they woke up to; the play log supplies the clock.
+
+data class Nap(
+    val startAt: Long, // `at` of the first song picked
+    val endAt: Long, // `at` of the last song picked
+    val from: Long, // when the first song began
+    val to: Long, // when the last song finished
+    val betweenMs: Long, // end of the first song -> start of the last one: the stretch nobody heard
+    val wholeMs: Long, // start of the first song -> end of the last one
+    val songs: List<SleepPlay>, // every song in the range, both ends included
+)
+
+/**
+ * How the log stamps a song: when it started (the PC, and phone rows synced from the PC) or when it ended (the phone's own player).
+ * Decided by which one makes consecutive songs line up. Defaults to "started".
+ */
+fun stampsAtEnd(range: List<SleepPlay>): Boolean {
+    var start = 0
+    var end = 0
+    for (i in 1 until range.size) {
+        val a = range[i - 1]
+        val b = range[i]
+        val d = b.at - a.at
+        if (d <= 0) continue
+        val sa = abs(d - a.playedMs) <= max(60_000.0, a.playedMs * 0.2)
+        val sb = abs(d - b.playedMs) <= max(60_000.0, b.playedMs * 0.2)
+        if (sa && !sb) start++ else if (sb && !sa) end++
+    }
+    return end > start
+}
+
+/** The nap between two picked songs, in either order. Null when either pick is not in the log. */
+fun napBetween(history: List<SleepPlay>, pickA: Long, pickB: Long): Nap? {
+    val plays = collapseRepeats(history)
+    val lo = min(pickA, pickB)
+    val hi = max(pickA, pickB)
+    val i = plays.indexOfFirst { it.at == lo }
+    val j = plays.indexOfLast { it.at == hi }
+    if (i < 0 || j < 0 || j < i) return null
+    val range = plays.subList(i, j + 1)
+    val first = range.first()
+    val last = range.last()
+    val atEnd = stampsAtEnd(range)
+    val from = if (atEnd) first.at - first.playedMs else first.at
+    val firstEnd = if (atEnd) first.at else first.at + first.playedMs
+    val lastStart = if (atEnd) last.at - last.playedMs else last.at
+    val to = if (atEnd) last.at else last.at + last.playedMs
+    return Nap(lo, hi, from, to, max(0, lastStart - firstEnd), max(0, to - from), range)
+}
