@@ -29,7 +29,10 @@ type LibraryState = {
   clearSearches: () => void;
 };
 
-const uid = () => (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, '').slice(0, 16);
+/** Plays kept in the browser. Was 2000, which silently dropped older plays that the phone still counted. */
+export const HISTORY_CAP = 8000;
+
+const uid =() => (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, '').slice(0, 16);
 
 export const useLibrary = create<LibraryState>()(
   persist(
@@ -50,7 +53,7 @@ export const useLibrary = create<LibraryState>()(
           else liked[t.id] = { track: t, at: Date.now() };
           return { liked };
         }),
-      logPlay: (p) => set((s) => ({ history: [p, ...s.history].slice(0, 2000) })),
+      logPlay: (p) => set((s) => ({ history: [p, ...s.history].slice(0, HISTORY_CAP) })),
       createPlaylist: (name, tracks = []) => {
         const id = uid();
         const now = Date.now();

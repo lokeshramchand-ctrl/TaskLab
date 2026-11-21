@@ -1551,6 +1551,14 @@ interface DatabaseDao {
     @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")
     fun firstEvent(): Flow<EventWithSong?>
 
+    /** Sync: has this exact play (same song, same instant) already been recorded here? Keeps pulls idempotent. */
+    @Query("SELECT COUNT(*) FROM event WHERE songId = :songId AND timestamp = :timestamp")
+    fun eventExists(songId: String, timestamp: LocalDateTime): Int
+
+    /** Sync repair: removes repeated copies of the same play (same song and instant), keeping the first. */
+    @Query("DELETE FROM event WHERE id NOT IN (SELECT MIN(id) FROM event GROUP BY songId, timestamp)")
+    fun deleteDuplicateEvents(): Int
+
     @Query("SELECT COUNT(*) FROM event")
     fun eventCount(): Flow<Int>
 

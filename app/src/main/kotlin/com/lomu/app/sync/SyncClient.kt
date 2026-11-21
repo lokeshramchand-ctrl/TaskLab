@@ -189,8 +189,18 @@ class SyncClient @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 _state.value = _state.value.copy(status = "Syncing…")
+                // One-time repair of plays that earlier versions inserted twice (they inflated this phone's totals).
+                if (!prefs.getBoolean("evDedupe1", false)) {
+                    database.deleteDuplicateEvents()
+                    prefs.edit().putBoolean("evDedupe1", true).apply()
+                }
                 pull()
-                push()
+                // Drain a large play backlog in batches.
+                for (i in 0 until 10) {
+                    val before = prefs.getLong("lastEvent", 0)
+                    push()
+                    if (prefs.getLong("lastEvent", 0) == before) break
+                }
                 _state.value = _state.value.copy(status = "Up to date · ${java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date())}", error = null)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(status = "Sync failed", error = e.message)
@@ -237,7 +247,9 @@ class SyncClient @Inject constructor(
                     if (song(id).first() == null) trackToMetadata(track)?.let { insert(it) }
                     if (song(id).first() != null) {
                         val at = LocalDateTime.ofInstant(Instant.ofEpochMilli(v.getLong("at")), ZoneId.systemDefault())
-                        insert(Event(songId = id, timestamp = at, playTime = v.optLong("playedMs")))
+                        // The play log is append-only and every play has a global id (instant + song), so applying
+                        // the same play twice (own writes echoed back, a re-pull after reinstall) must be a no-op.
+                        if (eventExists(id, at) == 0) insert(Event(songId = id, timestamp = at, playTime = v.optLong("playedMs")))
                     }
                 }
             }
@@ -458,7 +470,9 @@ class SyncClient @Inject constructor(
 
         // Plays: events newer than the last one pushed.
         val lastEvent = prefs.getLong("lastEvent", 0)
-        val events = database.events().first().filter { it.event.id > lastEvent }.sortedBy { it.event.id }.takeLast(2000)
+        // Oldest first, in batches: the cursor only moves past what was sent, so a big backlog drains over a few
+        // syncs instead of the older plays being silently skipped (they never reached the web before).
+        val events = database.events().first().filter { it.event.id > lastEvent }.sortedBy { it.event.id }.take(2000)
         events.forEach { e ->
             val at = e.event.timestamp.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             val dur = e.song.song.duration * 1000L

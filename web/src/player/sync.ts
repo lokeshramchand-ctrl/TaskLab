@@ -1,6 +1,6 @@
 'use client';
 import { create } from 'zustand';
-import { useLibrary, type Play, type UserPlaylist } from './library';
+import { useLibrary, HISTORY_CAP, type Play, type UserPlaylist } from './library';
 import { noteQueueRows, startQueueSync } from './queue-sync';
 import type { AlbumCard, ArtistCard, PlaylistCard, Track } from '@/lib/types';
 
@@ -146,7 +146,7 @@ export function applyRows(rows: Row[]) {
       }
     }
     history.sort((a, b) => b.at - a.at);
-    return { liked, albums, artists, savedPlaylists, playlists, history: history.slice(0, 2000) };
+    return { liked, albums, artists, savedPlaylists, playlists, history: history.slice(0, HISTORY_CAP) };
   });
 }
 
