@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useExplore, useHome, useMood, useRecs } from '@/lib/api';
 import { artistNames, greeting } from '@/lib/format';
+import { detectSleep, formatSpan } from '@/lib/sleep';
+import { useSleep } from '@/player/sleep';
+import Link from 'next/link';
 import { formatMinutes, recentTracks, topArtists, weekStats } from '@/lib/insights';
 import type { ArtistCard, Item, Shelf, Track } from '@/lib/types';
 import { ItemCard, ShelfSkeleton, ShelfTile } from '@/components/Cards';
@@ -33,6 +36,12 @@ export default function Home() {
   const likedList = useMemo(() => Object.values(liked), [liked]);
   const recent = useMemo(() => recentTracks(history, likedList, 8), [history, likedList]);
   const stats = useMemo(() => weekStats(history), [history]);
+  const anchors = useSleep((s) => s.anchors);
+  // Last night's sleep with the queue on, if the most recent run ended within the last day and a half.
+  const lastSleep = useMemo(() => {
+    const s = detectSleep(history, anchors)[0];
+    return s && Date.now() - s.end < 36 * 3_600_000 ? s : null;
+  }, [history, anchors]);
   const artists = useMemo(() => topArtists(history), [history]);
   const personal = history.length > 0 || likedList.length > 0;
   const mixes: Shelf[] = recs.data ?? [];
@@ -67,6 +76,9 @@ export default function Home() {
         <button className="btn primary" onClick={playMix} disabled={!mixTracks.length && !recent.length}>
           <Icon name="play" size={12} /> {mixTracks.length ? 'Play my mix' : 'Play recent'}
         </button>
+        <Link href="/insights" className="btn">
+          <Icon name="history" size={14} /> Insights
+        </Link>
         <button className="btn" onClick={() => setCustom(true)}>
           <Icon name="sliders" size={14} /> Customise
         </button>
@@ -100,6 +112,19 @@ export default function Home() {
             </div>
             <div className="muted small">{stats.topArtist ? 'Most minutes' : 'Nothing yet'}</div>
           </Tile>
+          {lastSleep && (
+            <Tile span={12} tone="card" href="/insights#sleep" label="Last sleep with the queue on">
+              <div className="foot">
+                <Icon name="moon" size={20} />
+                <span>
+                  You probably fell asleep around <b>{new Date(lastSleep.asleepFrom).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</b> during{' '}
+                  <b>{lastSleep.lastAwake.title}</b>, and the queue kept going for <b>~{formatSpan(lastSleep.asleepMs)}</b>.
+                </span>
+                <span className="grow" />
+                <span className="muted small">Insights ›</span>
+              </div>
+            </Tile>
+          )}
         </>
       )}
 

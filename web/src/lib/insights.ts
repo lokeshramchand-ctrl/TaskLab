@@ -81,3 +81,83 @@ export function formatMinutes(m: number): { value: string; unit: string } {
   if (m >= 90) return { value: (m / 60).toFixed(m >= 600 ? 0 : 1), unit: 'h' };
   return { value: String(m), unit: 'min' };
 }
+
+/* ---------------------------------------------------------------- deeper analytics */
+
+export type DeepStats = {
+  totalMs: number;
+  monthMs: number;
+  activeDays: number;
+  avgDayMs: number; // per day you listened
+  hourMs: number[]; // 24 buckets, local time
+  weekdayMs: number[]; // Monday first
+  completionRate: number; // 0..1 of plays that were finished
+  skipRate: number;
+  uniqueSongs: number;
+  uniqueArtists: number;
+  longestStreak: number; // days in a row
+  topTracks: { track: Track; plays: number; ms: number }[];
+  topArtistsMs: { name: string; ms: number; plays: number; id?: string }[];
+  peakHour: number | null;
+  newArtistsThisMonth: number;
+};
+
+/** Everything the Insights page shows, from the play log. `exclude` drops plays (e.g. the ones while asleep) from the totals and charts. */
+export function deepStats(history: (PlayLike & { skipped?: boolean })[], now = Date.now(), exclude: (p: PlayLike) => boolean = () => false): DeepStats {
+  const hourMs = Array.from({ length: 24 }, () => 0);
+  const weekdayMs = Array.from({ length: 7 }, () => 0);
+  const days = new Set<number>();
+  const tracks = new Map<string, { track: Track; plays: number; ms: number }>();
+  const artists = new Map<string, { name: string; ms: number; plays: number; id?: string }>();
+  const firstSeen = new Map<string, number>();
+  const monthAgo = now - 30 * DAY;
+  let totalMs = 0, monthMs = 0, done = 0, skips = 0, n = 0;
+  for (const p of history) {
+    const a = p.track.artists[0]?.name;
+    if (a && a !== 'N/A') firstSeen.set(a, Math.min(firstSeen.get(a) ?? Infinity, p.at));
+    if (exclude(p)) continue;
+    n++;
+    totalMs += p.playedMs;
+    if (p.at >= monthAgo) monthMs += p.playedMs;
+    if (p.completed) done++;
+    if (p.skipped) skips++;
+    days.add(dayKey(p.at));
+    const d = new Date(p.at);
+    hourMs[d.getHours()] += p.playedMs;
+    weekdayMs[(d.getDay() + 6) % 7] += p.playedMs;
+    const t = tracks.get(p.track.id) ?? { track: p.track, plays: 0, ms: 0 };
+    t.plays += p.completed ? 1 : 0;
+    t.ms += p.playedMs;
+    tracks.set(p.track.id, t);
+    if (a && a !== 'N/A') {
+      const x = artists.get(a) ?? { name: a, ms: 0, plays: 0, id: p.track.artists[0]?.id };
+      x.ms += p.playedMs;
+      x.plays += p.completed ? 1 : 0;
+      artists.set(a, x);
+    }
+  }
+  const sorted = [...days].sort((a, b) => a - b);
+  let best = 0, cur = 0;
+  sorted.forEach((d, i) => {
+    cur = i && Math.round((d - sorted[i - 1]) / DAY) === 1 ? cur + 1 : 1;
+    best = Math.max(best, cur);
+  });
+  const peak = Math.max(...hourMs);
+  return {
+    totalMs,
+    monthMs,
+    activeDays: days.size,
+    avgDayMs: days.size ? totalMs / days.size : 0,
+    hourMs,
+    weekdayMs,
+    completionRate: n ? done / n : 0,
+    skipRate: n ? skips / n : 0,
+    uniqueSongs: tracks.size,
+    uniqueArtists: artists.size,
+    longestStreak: best,
+    topTracks: [...tracks.values()].sort((a, b) => b.ms - a.ms).slice(0, 10),
+    topArtistsMs: [...artists.values()].sort((a, b) => b.ms - a.ms).slice(0, 10),
+    peakHour: peak > 0 ? hourMs.indexOf(peak) : null,
+    newArtistsThisMonth: [...firstSeen.values()].filter((t) => t >= monthAgo).length,
+  };
+}
