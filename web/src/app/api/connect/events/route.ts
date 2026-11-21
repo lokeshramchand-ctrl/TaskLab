@@ -1,5 +1,6 @@
 import { gate } from '@/server/auth';
 import { connect } from '@/server/connect';
+import { hubConnect } from '@/server/hub';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,14 @@ export async function GET(req: Request) {
   if (!/^[\w-]{8,64}$/.test(id)) return Response.json({ error: 'bad device id' }, { status: 400 });
   const name = (q.get('name') ?? 'Device').slice(0, 60);
   const kind = q.get('kind') === 'android' ? 'android' : 'web';
+
+  // Desktop app with a hub: be a device on the hub, so the phone sees this PC (and can control it).
+  const viaHub = await hubConnect(`events?${q.toString()}`, { signal: req.signal, headers: { accept: 'text/event-stream' } }, true);
+  if (viaHub?.ok && viaHub.body) {
+    return new Response(viaHub.body, {
+      headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'x-accel-buffering': 'no' },
+    });
+  }
 
   const enc = new TextEncoder();
   let off = () => {};

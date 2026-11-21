@@ -20,6 +20,7 @@ sealed interface Screen {
     data object Playlists : Screen
     data object Albums : Screen
     data object Artists : Screen
+    data object Sleep : Screen
 }
 
 /** Tiny back stack: the bottom entry is the current tab, the rest are pushed detail pages. */

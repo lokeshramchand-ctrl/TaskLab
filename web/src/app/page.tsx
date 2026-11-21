@@ -37,11 +37,8 @@ export default function Home() {
   const recent = useMemo(() => recentTracks(history, likedList, 8), [history, likedList]);
   const stats = useMemo(() => weekStats(history), [history]);
   const anchors = useSleep((s) => s.anchors);
-  // Last night's sleep with the queue on, if the most recent run ended within the last day and a half.
-  const lastSleep = useMemo(() => {
-    const s = detectSleep(history, anchors)[0];
-    return s && Date.now() - s.end < 36 * 3_600_000 ? s : null;
-  }, [history, anchors]);
+  // The most recent sleep with the queue on, whenever it was (older nights are on the Insights page).
+  const lastSleep = useMemo(() => detectSleep(history, anchors)[0] ?? null, [history, anchors]);
   const artists = useMemo(() => topArtists(history), [history]);
   const personal = history.length > 0 || likedList.length > 0;
   const mixes: Shelf[] = recs.data ?? [];
@@ -117,7 +114,7 @@ export default function Home() {
               <div className="foot">
                 <Icon name="moon" size={20} />
                 <span>
-                  You probably fell asleep around <b>{new Date(lastSleep.asleepFrom).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</b> during{' '}
+                  {new Date(lastSleep.end).toDateString() === new Date().toDateString() ? 'Today' : new Date(lastSleep.end).toLocaleDateString([], { weekday: 'long' })}: you probably fell asleep around <b>{new Date(lastSleep.asleepFrom).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</b> during{' '}
                   <b>{lastSleep.lastAwake.title}</b>, and the queue kept going for <b>~{formatSpan(lastSleep.asleepMs)}</b>.
                 </span>
                 <span className="grow" />

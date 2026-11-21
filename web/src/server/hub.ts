@@ -52,7 +52,7 @@ export function hubStatus(): HubStatus {
 
 const base = () => (getSetting('hub_url') ?? '').replace(/\/+$/, '');
 
-async function hubFetch(path: string, init: RequestInit = {}, auth = true): Promise<Response> {
+async function hubFetch(path: string, init: RequestInit = {}, auth = true, timeoutMs: number | null = 25_000): Promise<Response> {
   const go = () =>
     fetch(base() + path, {
       ...init,
@@ -61,11 +61,28 @@ async function hubFetch(path: string, init: RequestInit = {}, auth = true): Prom
         'x-lomu-device': 'desktop',
         ...(auth && getSetting('hub_access') ? { authorization: `Bearer ${getSetting('hub_access')}` } : {}),
       },
-      signal: AbortSignal.timeout(25_000),
+      signal: init.signal ?? (timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined),
     });
   let r = await go();
   if (r.status === 401 && auth && (await refreshTokens())) r = await go();
   return r;
+}
+
+/**
+ * Connect (the devices list and remote control) lives on the hub, because that is where the phone connects. The desktop
+ * app runs a server of its own, so without this it would register on a server nobody else can see: the phone would never list
+ * the PC, and could not control it. When a hub is set up, the local /api/connect/* routes hand their requests to the hub
+ * instead, as this PC's own signed-in session. Returns null when there is no hub or it cannot be reached, and the caller then
+ * falls back to the local relay (so the app still works on its own).
+ */
+export async function hubConnect(path: string, init: RequestInit = {}, stream = false): Promise<Response | null> {
+  if (!process.env.LOMU_LOCAL_TOKEN || !getSetting('hub_url') || rt.state === 'error') return null;
+  try {
+    const r = await hubFetch('/api/connect/' + path, init, true, stream ? null : 10_000);
+    return r.ok || r.status === 404 || r.status === 409 || r.status === 400 ? r : null;
+  } catch {
+    return null;
+  }
 }
 
 /** One refresh at a time: the hub rotates refresh tokens, so two parallel refreshes would invalidate each other. */

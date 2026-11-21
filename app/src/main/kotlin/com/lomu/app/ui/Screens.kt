@@ -138,8 +138,10 @@ fun HomeScreen() {
         recsLoaded = true
     }
     val state by load("home") { YouTube.home() }
+    val sleep = lastSleep()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPad())) {
         item { TitleBar("Home") }
+        if (sleep != null) item { SleepCard(sleep) }
         val resume = remoteQueue
         if (resume != null) item {
             val first = resume.tracks[resume.index]
@@ -417,6 +419,7 @@ fun LibraryScreen() {
             LibraryRow(Ph.Disc, "Albums") { nav.push(Screen.Albums) }
             LibraryRow(Ph.User, "Artists") { nav.push(Screen.Artists) }
             LibraryRow(Ph.Heart, "Liked Songs") { nav.push(Screen.Liked) }
+            LibraryRow(Ph.Moon, "Sleep") { nav.push(Screen.Sleep) }
             LibraryRow(Ph.Download, "Import from YouTube Music") { nav.push(Screen.Import) }
         }
     }
@@ -424,7 +427,7 @@ fun LibraryScreen() {
 
 /** Glass "back" capsule above a large title, for pushed list pages. */
 @Composable
-private fun BackTitle(back: String, title: String, onBack: () -> Unit) {
+internal fun BackTitle(back: String, title: String, onBack: () -> Unit) {
     val lo = LocalLo.current
     Column(Modifier.statusBarsPadding()) {
         Row(
